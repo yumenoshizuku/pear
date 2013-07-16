@@ -4,6 +4,7 @@
 %token <int> LITERAL
 %token LPAREN RPAREN
 
+/* precedence from lowest to highest */
 %left PLUS MINUS
 %left TIMES DIVIDE
 
@@ -13,9 +14,9 @@
 %%
 
 expr:
-      expr PLUS expr     { Binop($1, Add, $3) }
-    | expr MINUS expr    { Binop($1, Sub, $3) }
-    | expr TIMES expr    { Binop($1, Mul, $3) }
-    | expr DIVIDE expr   { Binop($1, Div, $3) }
-    | LITERAL            { Lit($1) }
-    | LPAREN expr RPAREN { $2 }
+      expr PLUS expr          { Binop($1, Add, $3) }
+    | expr MINUS expr         { Binop($1, Sub, $3) }
+    | expr TIMES expr         { Binop($1, Mul, $3) }
+    | expr DIVIDE expr        { Binop($1, Div, $3) }
+    | LITERAL                 { Lit($1) }
+    | LPAREN expr RPAREN      { $2 }

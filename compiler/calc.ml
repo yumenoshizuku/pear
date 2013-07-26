@@ -1,31 +1,42 @@
 open Ast
 
-(*
+(*=
 module StringMap = Map.Make(String);;
 let variables = StringMap.empty;;
-*)
-let variables = Array.make 10 "";;
+=*)
+module IntMap = Map.Make(struct
+  type t = int
+  let compare x y = Pervasives.compare x y
+  end)
+let vars = IntMap.empty;;
+(*let variables = Array.make 10 "";;*)
 
-let rec eval = function
+let rec eval env = function
    Lit(x) -> string_of_int x
  | Var(x) ->
-         variables.(x)
-         (*
+         if IntMap.is_empty vars then print_endline ("empty");
+         IntMap.find x vars, env
+         (*variables.(x)*)
+         (*=
          if StringMap.is_empty variables then print_endline ("->" ^ x);
          if StringMap.mem x variables then 
              StringMap.find x variables
          else "100"
-         *)
+         =*)
  | StrLit(x) -> x
  | Seq(e1, e2) ->
          ignore (eval e1); eval e2;
  | Asn(x, e) ->
-         let v = eval e in
-         variables.(x) <- v; v;
+         let vars = IntMap.add x "22" vars;
+         IntMap.find x vars;
          (*
          let v = eval e in
-         ignore (StringMap.add x v variables); v;
+         variables.(x) <- v; v;
          *)
+         (*=
+         let v = eval e in
+         ignore (StringMap.add x v variables); v;
+         =*)
  | Puts(e1) -> 
          let v1 = eval e1 in
          print_endline (v1);

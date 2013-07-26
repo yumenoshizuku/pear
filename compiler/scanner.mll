@@ -13,5 +13,5 @@ rule token =
    | "puts"                   { PUTS }
    | ['0'-'9']+ as lit        { LITERAL(int_of_string lit) }
    | '"'['a'-'z' 'A'-'Z' '0'-'9']+'"' as strlit { STRLITERAL(strlit) }
-   | ['a'-'z' 'A'-'Z' '0'-'9']+ as var { VARIABLE(var) }
+   | '$'['0'-'9'] as var { VARIABLE(int_of_char var.[1] - 48) }
    | eof                      { EOF }

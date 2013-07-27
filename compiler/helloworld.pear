@@ -1,0 +1,6 @@
+var = "Hello World", 
+puts(var)
+(*,
+num = (2*7),
+puts(num+3)
+*)

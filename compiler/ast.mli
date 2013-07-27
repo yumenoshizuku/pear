@@ -5,7 +5,7 @@ type expr =
     | Lit of int
     | StrLit of string
     (*| Var of string*)
-    | Var of int
+    | Var of string
     | Seq of expr * expr
-    | Asn of int * expr
+    | Asn of string * expr
     | Puts of expr

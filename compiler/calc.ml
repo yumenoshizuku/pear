@@ -1,45 +1,24 @@
 open Ast
 
-(*=
-module StringMap = Map.Make(String);;
-let variables = StringMap.empty;;
-=*)
-module IntMap = Map.Make(struct
-  type t = int
+module StringMap = Map.Make(struct
+  type t = string
   let compare x y = Pervasives.compare x y
   end)
-let vars = IntMap.empty;;
-(*let variables = Array.make 10 "";;*)
+let vars = StringMap.empty;;
 
 let rec eval env = function
    Lit(x) -> string_of_int x, env
  | Var(x) ->
-         (*if IntMap.is_empty vars then print_endline ("empty");*)
-         if IntMap.mem x env then
-             IntMap.find x env, env
-         else raise (Failure ("undeclared identifier" ^ string_of_int x))
-         (*variables.(x)*)
-         (*=
-         if StringMap.is_empty variables then print_endline ("->" ^ x);
-         if StringMap.mem x variables then 
-             StringMap.find x variables
-         else "100"
-         =*)
+         if StringMap.mem x env then
+             StringMap.find x env, env
+         else raise (Failure ("Error: Undeclared identifier " ^ x))
  | StrLit(x) -> x, env
  | Seq(e1, e2) ->
          let value, vars = eval env e1 in
          eval vars e2;
  | Asn(x, e) ->
          let value, vars = eval env e in 
-             value, (IntMap.add x value vars);
-         (*
-         let v = eval e in
-         variables.(x) <- v; v;
-         *)
-         (*=
-         let v = eval e in
-         ignore (StringMap.add x v variables); v;
-         =*)
+             value, (StringMap.add x value vars);
  | Puts(e1) -> 
          let v1, vars = eval env e1 in
          print_endline (v1);

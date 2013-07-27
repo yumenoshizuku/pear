@@ -3,7 +3,7 @@
 %token PLUS MINUS TIMES DIVIDE EOF PUTS COMMA ASSIGN
 %token <int> LITERAL
 %token <string> STRLITERAL
-%token <int> VARIABLE
+%token <string> VARIABLE
 %token LPAREN RPAREN
 
 %left COMMA

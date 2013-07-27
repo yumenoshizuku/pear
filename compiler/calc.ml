@@ -12,10 +12,12 @@ let vars = IntMap.empty;;
 (*let variables = Array.make 10 "";;*)
 
 let rec eval env = function
-   Lit(x) -> string_of_int x
+   Lit(x) -> string_of_int x, env
  | Var(x) ->
-         if IntMap.is_empty vars then print_endline ("empty");
-         IntMap.find x vars, env
+         (*if IntMap.is_empty vars then print_endline ("empty");*)
+         if IntMap.mem x env then
+             IntMap.find x env, env
+         else raise (Failure ("undeclared identifier" ^ string_of_int x))
          (*variables.(x)*)
          (*=
          if StringMap.is_empty variables then print_endline ("->" ^ x);
@@ -23,12 +25,13 @@ let rec eval env = function
              StringMap.find x variables
          else "100"
          =*)
- | StrLit(x) -> x
+ | StrLit(x) -> x, env
  | Seq(e1, e2) ->
-         ignore (eval e1); eval e2;
+         let value, vars = eval env e1 in
+         eval vars e2;
  | Asn(x, e) ->
-         let vars = IntMap.add x "22" vars;
-         IntMap.find x vars;
+         let value, vars = eval env e in 
+             value, (IntMap.add x value vars);
          (*
          let v = eval e in
          variables.(x) <- v; v;
@@ -38,19 +41,20 @@ let rec eval env = function
          ignore (StringMap.add x v variables); v;
          =*)
  | Puts(e1) -> 
-         let v1 = eval e1 in
+         let v1, vars = eval env e1 in
          print_endline (v1);
-         v1; 
+         v1, env; 
  | Binop(e1, op, e2) ->
-   let v1 = eval e1 and v2 = eval e2 in
-       match op with
+   let v1, vars = eval env e1 in
+   let v2, vars = eval env e2 in
+       (match op with
            Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
          | Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
          | Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
-         | Div -> string_of_int ((int_of_string v1) / (int_of_string v2))
+         | Div -> string_of_int ((int_of_string v1) / (int_of_string v2))), vars
 
 let _ =
     let lexbuf = Lexing.from_channel stdin in
     let expr = Parser.expr Scanner.token lexbuf in
-    let result = eval expr in
+    let result, env = eval vars expr in
     print_endline (result)

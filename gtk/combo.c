@@ -25,9 +25,9 @@ int main(int argc, char** argv){
   combo = gtk_combo_new();
   gtk_container_add(GTK_CONTAINER(frame), combo);
   GList *glist = NULL;
-  glist = g_list_append (glist, "check box1");
-  glist = g_list_append (glist, "check box2");
-  glist = g_list_append (glist, "check box3");
+  glist = g_list_append (glist, "selection1");
+  glist = g_list_append (glist, "selection2");
+  glist = g_list_append (glist, "selection3");
   gtk_combo_set_popdown_strings (GTK_COMBO (combo), glist);  
   gtk_fixed_put(GTK_FIXED(frame), combo, 50, 20);
  

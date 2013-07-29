@@ -18,19 +18,32 @@ let rec eval env = function
  | Char(x) -> String.make 1 x, env
  | Seq(e1, e2) ->
          let value, vars = eval env e1 in
-         eval vars e2;
+         let value2, vars2 = eval vars e2 in
+         value ^ value2, vars2;
  | Asn(x, e) ->
          let value, vars = eval env e in 
-             value, (StringMap.add x value vars);
+             "", (StringMap.add x value vars);
  | Puts(e1) -> 
          let v1, vars = eval env e1 in
          (* Printf for puts and char* for string *)
-         ("printf(\"%s\\n\", \"" ^ v1 ^ "\");"), env; 
+         ("printf(\"%s\\n\", \"" ^ v1 ^ "\");\n"), env; 
  | Binop(e1, op, e2) ->
          let v1, vars = eval env e1 in
          let v2, vars = eval env e2 in
          match e1, e2 with
            Lit(e1), Lit(e2) -> 
+             ( match op with
+                 Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
+               | Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
+               | Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
+               | Div -> string_of_int ((int_of_string v1) / (int_of_string v2))), vars
+         | Var(e1), Lit(e2) -> 
+             ( match op with
+                 Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
+               | Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
+               | Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
+               | Div -> string_of_int ((int_of_string v1) / (int_of_string v2))), vars
+         | Lit(e1), Var(e2) -> 
              ( match op with
                  Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
                | Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
@@ -49,9 +62,9 @@ let rec eval env = function
                  Add -> v1 ^ v2
                | _   -> raise (Failure ("Error: Syntax error")) ), vars
          | _ ->
-             let v1, vars = eval env e1 in
-             let v2, vars = eval env e2 in
-             v1 ^ v2, vars
+             ( match op with
+                 Add -> v1 ^ v2
+               | _   -> raise (Failure ("Error: Syntax error")) ), vars
 
 let () =
     let lexbuf = Lexing.from_channel stdin in
@@ -60,8 +73,8 @@ let () =
     let oc = open_out "prog.c" in
     (* Wrap main method and libraries *)
     fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
-                       "#include <gtk/gtk.h>\n" ^
-                       "int main() {\n" ^ result ^ "\n}")
+                       "#include <gtk/gtk.h>\n\n" ^
+                       "int main() {\n" ^ result ^ "}")
 ;;
 
 

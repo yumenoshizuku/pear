@@ -1,4 +1,5 @@
 open Ast
+open Printf
 
 module StringMap = Map.Make(struct
   type t = string
@@ -21,8 +22,8 @@ let rec eval env = function
              value, (StringMap.add x value vars);
  | Puts(e1) -> 
          let v1, vars = eval env e1 in
-         print_endline (v1);
-         v1, env; 
+         (* Printf for puts and char* for string *)
+         ("printf(\"%s\\n\", " ^ v1 ^ ");"), env; 
  | Binop(e1, op, e2) ->
    let v1, vars = eval env e1 in
    let v2, vars = eval env e2 in
@@ -35,4 +36,8 @@ let rec eval env = function
 let _ =
     let lexbuf = Lexing.from_channel stdin in
     let expr = Parser.expr Scanner.token lexbuf in
-    eval vars expr
+    let result, evars = eval vars expr in
+    let oc = open_out "prog.c" in
+    (* Wrap main method and libraries *)
+    fprintf oc "%s\n" ("#include <stdio.h>\n#include <gtk/gtk.h>\nint main() {\n" ^ result ^ "\n}")
+

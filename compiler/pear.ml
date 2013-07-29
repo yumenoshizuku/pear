@@ -7,7 +7,8 @@ module StringMap = Map.Make(struct
   end)
 let vars = StringMap.empty;;
 
-
+  (* Can I make this function return int | string | char?
+   * so that I can match op with ...*)
 let rec eval env = function
    Lit(x) -> string_of_int x, env
  | Var(x) ->
@@ -15,6 +16,7 @@ let rec eval env = function
              StringMap.find x env, env
          else raise (Failure ("Error: Undeclared identifier " ^ x))
  | StrLit(x) -> x, env
+ | Char(x) -> String.make 1 x, env
  | Seq(e1, e2) ->
          let value, vars = eval env e1 in
          eval vars e2;
@@ -46,7 +48,8 @@ let () =
 ;;
 
 
-(*
+(* Can I make prog.c write to file before running the following?
+ *
 (* Compile prog.c with gcc.
  * The switches are obtained from the command:
  * `pkg-config --cflags --libs gtk+-3.0` *)

@@ -3,6 +3,7 @@
 %token PLUS MINUS TIMES DIVIDE EOF PUTS COMMA ASSIGN
 %token <int> LITERAL
 %token <string> STRLITERAL
+%token <char> CHAR
 %token <string> VARIABLE
 %token LPAREN RPAREN
 
@@ -25,6 +26,7 @@ expr:
     | PUTS LPAREN expr RPAREN { Puts($3) }
     | LITERAL                 { Lit($1) }
     | STRLITERAL              { StrLit($1) }
+    | CHAR                    { Char($1) }
     | VARIABLE                { Var($1) }
     | VARIABLE ASSIGN expr    { Asn($1, $3) }
     | expr COMMA expr         { Seq($1, $3) }

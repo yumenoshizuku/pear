@@ -39,5 +39,7 @@ let _ =
     let result, evars = eval vars expr in
     let oc = open_out "prog.c" in
     (* Wrap main method and libraries *)
-    fprintf oc "%s\n" ("#include <stdio.h>\n#include <gtk/gtk.h>\nint main() {\n" ^ result ^ "\n}")
+    fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
+                       "#include <gtk/gtk.h>\n" ^
+                       "int main() {\n" ^ result ^ "\n}")
 

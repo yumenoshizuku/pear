@@ -7,6 +7,7 @@ module StringMap = Map.Make(struct
   end)
 let vars = StringMap.empty;;
 
+
 let rec eval env = function
    Lit(x) -> string_of_int x, env
  | Var(x) ->
@@ -33,7 +34,7 @@ let rec eval env = function
          | Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
          | Div -> string_of_int ((int_of_string v1) / (int_of_string v2))), vars
 
-let _ =
+let () =
     let lexbuf = Lexing.from_channel stdin in
     let expr = Parser.expr Scanner.token lexbuf in
     let result, evars = eval vars expr in
@@ -42,4 +43,24 @@ let _ =
     fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
                        "#include <gtk/gtk.h>\n" ^
                        "int main() {\n" ^ result ^ "\n}")
+;;
 
+
+(*
+(* Compile prog.c with gcc.
+ * The switches are obtained from the command:
+ * `pkg-config --cflags --libs gtk+-3.0` *)
+open Unix;;
+let gcc () = execvp "gcc" [|"gcc"; "-o"; "prog"; "-pthread";
+"-I/usr/include/gtk-3.0"; "-I/usr/include/at-spi2-atk/2.0";
+"-I/usr/include/gtk-3.0"; "-I/usr/include/gio-unix-2.0/";
+"-I/usr/include/cairo"; "-I/usr/include/pango-1.0"; "-I/usr/include/harfbuzz";
+"-I/usr/include/pango-1.0"; "-I/usr/include/atk-1.0"; "-I/usr/include/cairo";
+"-I/usr/include/pixman-1"; "-I/usr/include/freetype2"; "-I/usr/include/libdrm";
+"-I/usr/include/libpng16"; "-I/usr/include/gdk-pixbuf-2.0";
+"-I/usr/include/libpng16"; "-I/usr/include/glib-2.0";
+"-I/usr/lib/glib-2.0/include"; "-lgtk-3"; "-lgdk-3"; "-lpangocairo-1.0";
+"-lpango-1.0"; "-latk-1.0"; "-lcairo-gobject"; "-lcairo"; "-lgdk_pixbuf-2.0";
+"-lgio-2.0"; "-lgobject-2.0"; "-lglib-2.0"; "prog.c"|];;
+handle_unix_error gcc ();;
+*)

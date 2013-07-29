@@ -7,4 +7,4 @@ default:
 	ocamlc -c scanner.ml
 	ocamlc -c parser.ml
 	ocamlc -c pear.ml
-	ocamlc -o pear parser.cmo scanner.cmo pear.cmo
+	ocamlc -o pear unix.cma parser.cmo scanner.cmo pear.cmo

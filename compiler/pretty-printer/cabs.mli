@@ -116,3 +116,27 @@ and constant =
   | CONST_COMPOUND of expression list
 and attributes = attribute list
 and attribute = NO_ATTR | ATTR_LIST of attribute list | ATTR_ID of string
+
+
+and gtkwidget = GW of string
+and widget = 
+      SIMPLE of string
+    | COMPLEX of string * gtkargs
+    | BUTTONARRAY of widget array
+and create =
+      CRWID of string
+    | CRFUNC of gtkfunc
+
+and gtkargs = gtkarg list
+and gtkarg =
+      SIMPLEARG of string
+    | WIDGET of widget
+    | LIT of int
+    | TEXT of string
+    | FUNC of gtkfunc
+
+and gtkfunc = gtkfunname * gtkargs
+and gtkfunname = FUNNAME of string
+and widgetlist = widgetinit list
+and widgetinit = gtkwidget * widget
+and widgetasn = widget * create * gtkarg

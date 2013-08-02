@@ -5,7 +5,7 @@ module StringMap = Map.Make(struct
   type t = string
   let compare x y = Pervasives.compare x y
   end)
-let vars = StringMap.empty;;
+let vars = StringMap.empty
 
 let rec eval env = function
    Lit(x) -> string_of_int x, env
@@ -42,7 +42,7 @@ let () =
     fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
                        "#include <gtk/gtk.h>\n" ^
                        "int main() {\n" ^ result ^ "\n}")
-;;
+
 
 
 (* Can I make prog.c write to file before running the following?

@@ -11,4 +11,3 @@ let _ =
     Ast -> let listing = Ast.string_of_program program
            in print_string listing
   | Interpret -> ignore (Interpret.run program)
-;;

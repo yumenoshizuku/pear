@@ -20,10 +20,10 @@ let rec eval env = function
          eval vars e2;
  | Asn(x, e) ->
          let value, vars = eval env e in 
-             value, (StringMap.add x value vars);
+             value, (StringMap.add x value vars)
  | Puts(e1) -> 
          let v1, vars = eval env e1 in
-         ("printf(\"%s\\n\", " ^ v1 ^ ");"), env; 
+         ("printf(\"%s\\n\", " ^ v1 ^ ");"), env 
  | Binop(e1, op, e2) ->
    let v1, vars = eval env e1 in
    let v2, vars = eval env e2 in

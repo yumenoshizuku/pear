@@ -4,14 +4,14 @@
 ** File:	cabs.ml
 ** Version:	2.1
 ** Date:	4.7.99
-** Author:	Hugues Cassé
+** Author:	Hugues CassÃ©
 **
-**	1.0	2.19.99	Hugues Cassé	First version.
-**	2.0	3.22.99	Hugues Cassé	Generalization of typed names.
-**	2.1	4.7.99	Hugues Cassé	GNU Statement embedded in expressions managed.
+**	1.0	2.19.99	Hugues CassÃ©	First version.
+**	2.0	3.22.99	Hugues CassÃ©	Generalization of typed names.
+**	2.1	4.7.99	Hugues CassÃ©	GNU Statement embedded in expressions managed.
 *)
 
-let version = "Cabs 2.1 4.7.99 Hugues Cassé"
+let version = "Cabs 2.1 4.7.99 Hugues CassÃ©"
 
 (*
 ** Types
@@ -123,4 +123,25 @@ and attribute =
 	NO_ATTR
 	| ATTR_LIST of attribute list
 	| ATTR_ID of string
+and gtkwidget = GW of string
+and widget = 
+      SIMPLE of string
+    | COMPLEX of string * gtkargs
+    | BUTTONARRAY of widget array
+and create =
+      CRWID of string
+    | CRFUNC of gtkfunc
 
+and gtkargs = gtkarg list
+and gtkarg =
+      SIMPLEARG of string
+    | WIDGET of widget
+    | LIT of int
+    | TEXT of string
+    | FUNC of gtkfunc
+
+and gtkfunc = gtkfunname * gtkargs
+and gtkfunname = FUNNAME of string
+and widgetlist = widgetinit list
+and widgetinit = gtkwidget * widget
+and widgetasn = widget * create * gtkarg

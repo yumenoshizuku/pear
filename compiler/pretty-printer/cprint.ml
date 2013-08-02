@@ -4,24 +4,24 @@
 ** File:	cprint.ml
 ** Version:	2.1e
 ** Date:	9.1.99
-** Author:	Hugues Cassé
+** Author:	Hugues Cass
 **
-**	1.0		2.22.99	Hugues Cassé	First version.
-**	2.0		3.18.99	Hugues Cassé	Compatible with Frontc 2.1, use of CAML
+**	1.0		2.22.99	Hugues Cass	First version.
+**	2.0		3.18.99	Hugues Cass	Compatible with Frontc 2.1, use of CAML
 **									pretty printer.
-**	2.1		3.22.99	Hugues Cassé	More efficient custom pretty printer used.
-**	2.1a	4.12.99	Hugues Cassé	Correctly handle:
+**	2.1		3.22.99	Hugues Cass	More efficient custom pretty printer used.
+**	2.1a	4.12.99	Hugues Cass	Correctly handle:
 **									char *m, *m, *p; m + (n - p)
-**	2.1b	4.15.99	Hugues Cassé	x + (y + z) stays x + (y + z) for
+**	2.1b	4.15.99	Hugues Cass	x + (y + z) stays x + (y + z) for
 **									keeping computation order.
-**	2.1c	7.23.99	Hugues Cassé	Improvement of case and default display.
-**	2.1d	8.25.99	Hugues Cassé	Rebuild escape sequences in string and
+**	2.1c	7.23.99	Hugues Cass	Improvement of case and default display.
+**	2.1d	8.25.99	Hugues Cass	Rebuild escape sequences in string and
 **									characters.
-**	2.1e	9.1.99	Hugues Cassé	Fix, recognize and correctly display '\0'.
+**	2.1e	9.1.99	Hugues Cass	Fix, recognize and correctly display '\0'.
 *)
 
 open Cabs
-let version = "Cprint 2.1e 9.1.99 Hugues Cassé"
+let version = "Cprint 2.1e 9.1.99 Hugues Cass"
 
 
 (*
@@ -685,7 +685,38 @@ and print_def def =
 		print ";";
 		new_line ();
 		force_new_line ()
-		
+(* Print GTK Commands*)
+let print_widgetinit wid =
+	match wid with
+		  SIMPLE (widname) -> print ("GtkWidget " ^ "*" ^ widname)
+	  	| COMPLEX (widname, widargs) -> print_gtkfunc widname widargs
+	  	| BUTTONARRAY (widarray) ->	print ("GtkWidget " ^ "*"); print_array widarray
+	
+
+let print_gtkfunc funname funarg =
+	match funarg with
+	    SIMPLEARG -> print funname; print"("; print funarg; print ")"
+	  | WIDGET -> print funname; print"("; print_widget funarg; print ")"
+	  | LIT -> print funname; print"("; print (string_of_int funarg); print ")"
+	  | TEXT -> print funname; print"(\""; print funarg; print "\")"
+	  | FUNC -> print funname; print"("; print_gtkfunc funarg; print ")"
+
+let print_init =
+	print "gtk_init(&argc, &argv);";  new_line ()
+
+let print_widget wid =
+	match wid with
+	  SIMPLE -> print wid
+	| COMPLEX -> print widname; 
+	| BUTTONARRAY -> print_array wid
+
+let print_create wid =
+	match wid with
+	    "window" -> print " gtk_window_new(GTK_WINDOW_TOPLEVEL);"; new_line ()
+	  | "frame" -> print " gtk_fixed_new();"; new_line ()
+	  | "buttonBox" -> print "gtk_vbutton_box_new();"; new_line ()
+	  | "rbuttons" -> print_gtkfunc gtk_radio_button_new_with_label (NULL, argv[1])
+			
 
 (*  print abstrac_syntax -> ()
 **		Pretty printing the given abstract syntax program.

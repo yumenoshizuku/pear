@@ -10,4 +10,7 @@ type expr =
     | Asn of string * expr
     | Puts of expr
 
+type stmt =
+    Expr of expr
+    | Return of expr
 

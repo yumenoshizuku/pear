@@ -23,6 +23,7 @@ type token =
   | WHILE
   | INT
   | LITERAL of (int)
+  | STRLIT of (string)
   | ID of (string)
   | EOF
 

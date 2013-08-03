@@ -6,6 +6,7 @@
 %token <char> CHAR
 %token <string> VARIABLE
 %token LPAREN RPAREN
+%token RETURN
 
 %left COMMA
 %left ASSIGN
@@ -13,8 +14,9 @@
 %left TIMES DIVIDE
 %left PUTS
 
-%start expr
+%start stmt
 %type <Ast.expr> expr
+%type <Ast.stmt> stmt
 
 %%
 
@@ -31,3 +33,7 @@ expr:
     | VARIABLE ASSIGN expr    { Asn($1, $3) }
     | expr COMMA expr         { Seq($1, $3) }
     | LPAREN expr RPAREN      { $2 }
+
+stmt:
+      expr { Expr($1) }
+    | RETURN expr { Return($2) }

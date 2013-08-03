@@ -7,7 +7,7 @@ rule token = parse
    | '-'      { MINUS }   | '/'      { DIVIDE }   
    | '('      { LPAREN }  | ')'      { RPAREN } 
    | '='      { ASSIGN }  | ','      { COMMA }    
-   | "puts"   { PUTS }
+   | "puts"   { PUTS }    | "return" { RETURN }
    | eof      { EOF }
    | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
    | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']+'"' as strlit  { STRLITERAL(strlit) }

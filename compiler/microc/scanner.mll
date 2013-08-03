@@ -27,6 +27,8 @@ rule token = parse
 | "return" { RETURN }
 | "int"    { INT }
 | ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
+| '"'['a'-'z' 'A'-'Z' '0'-'9']*'"' as lxm { STRLIT(String.sub lxm 1
+(String.length lxm - 2)) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }

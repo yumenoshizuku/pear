@@ -2,6 +2,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type expr =
     Literal of int
+  | StrLit of string
   | Id of string
   | Binop of expr * op * expr
   | Assign of string * expr
@@ -27,6 +28,7 @@ type program = string list * func_decl list
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
+  | StrLit(l) -> l
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
@@ -57,9 +59,9 @@ let string_of_vdecl id =
   "int " ^ id ^ ";\n"
 
 let string_of_fdecl fdecl =
-  fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
-  String.concat "" (List.map string_of_stmt fdecl.body) ^
+    fdecl.fname ^ "[F](" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
+  String.concat "[L]" (List.map string_of_vdecl fdecl.locals) ^
+  String.concat "[B]" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
 let string_of_program (vars, funcs) =

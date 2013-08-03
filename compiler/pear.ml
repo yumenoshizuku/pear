@@ -1,4 +1,5 @@
 open Ast
+open Cast
 open Printf
 
 module StringMap = Map.Make(struct
@@ -6,42 +7,86 @@ module StringMap = Map.Make(struct
   let compare x y = Pervasives.compare x y
   end)
 let vars = StringMap.empty
+ 
+exception ReturnException of string * string StringMap.t
+
+let rec last = function
+    | [] -> None
+    | [x] -> Some x
+    | _ :: t -> last t
 
 let rec eval env = function
-   Lit(x) -> string_of_int x, env
- | Var(x) ->
+   (Ast.Lit(x), cenv) -> (string_of_int x, cenv), env
+ | (Ast.Var(x), cenv) ->
          if StringMap.mem x env then
-             StringMap.find x env, env
+             (StringMap.find x env, cenv), env
          else raise (Failure ("Error: Undeclared identifier " ^ x))
- | StrLit(x) -> x, env
- | Char(x) -> String.make 1 x, env
- | Seq(e1, e2) ->
-         let value, vars = eval env e1 in
-         eval vars e2;
- | Asn(x, e) ->
-         let value, vars = eval env e in 
-             value, (StringMap.add x value vars)
- | Puts(e1) -> 
-         let v1, vars = eval env e1 in
-         ("printf(\"%s\\n\", " ^ v1 ^ ");"), env 
- | Binop(e1, op, e2) ->
-   let v1, vars = eval env e1 in
-   let v2, vars = eval env e2 in
-       (match op with
-           Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
-         | Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
-         | Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
-         | Div -> string_of_int ((int_of_string v1) / (int_of_string v2))), vars
+ | (Ast.StrLit(x), cenv) -> (x, cenv), env
+ | (Ast.Char(x), cenv) -> (String.make 1 x, cenv), env
+ | (Ast.Seq(e1, e2), cenv) ->
+         let value, vars = eval env (e1, cenv) in
+         eval vars (e2, cenv)
+ | (Ast.Asn(x, e), cenv) ->
+         let (value, cenv), vars = eval env (e, cenv) in 
+             (value, cenv), (StringMap.add x value vars)
+ | (Ast.Puts(e1), cenv) -> 
+         let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
+
+         let rcenv = List.rev cenv in
+         let rcenv = (match rcenv with
+               [] -> raise (Failure ("Error: Syntax error."))
+             |  [x] -> 
+                     ignore (x.body = [Cast.Expr (Call("print", [Cast.Literal
+               (int_of_string v1)]))]); [x]
+             | h :: _ -> ignore (h.body = [Cast.Expr (Call("print",
+             [Cast.Literal
+               (int_of_string v1)]))]); [h]) in
+         let cenv = List.rev rcenv in
+         let head = List.hd cenv in
+         let hbody = List.hd head.body in
+         print_string (string_of_stmt (hbody));
+         (*let (last cenv).body = Call("print", [v1])::cenv.body;*)
+         (("printf(\"%s\\n\", " ^ v1 ^ ");"), (cvars, cenv)), env 
+ | (Ast.Binop(e1, op, e2), cenv) ->
+   let (v1, cenv), vars = eval env (e1, cenv) in
+   let (v2, cenv), vars = eval env (e2, cenv) in
+       ((match op with
+           Ast.Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
+         | Ast.Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
+         | Ast.Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
+         | Ast.Div -> string_of_int ((int_of_string v1) / (int_of_string v2))),
+         cenv), vars
+
+
+
+let cenv = {
+   fname = "main";
+   formals = [];
+   locals = [];
+   body = [];
+}
+
+let rec exec env = function
+   Ast.Expr(e) ->
+       eval env (e, ([], [cenv]))
+ | Ast.Return(e) ->
+         let v, vars = eval env (e, ([], [cenv])) in
+   v, vars
+   
+   (*raise (ReturnException(v, vars))*)
 
 let () =
     let lexbuf = Lexing.from_channel stdin in
-    let expr = Parser.expr Scanner.token lexbuf in
-    let result, evars = eval vars expr in
+    let expr = Parser.stmt Scanner.token lexbuf in
+    let (result, cenv), evars = exec vars expr in
     let oc = open_out "prog.c" in
+    let coc = open_out "cprog.c" in
     (* Wrap main method and libraries *)
     fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
                        "#include <gtk/gtk.h>\n" ^
-                       "int main() {\n" ^ result ^ "\n}")
+                       "int main() {\n" ^ result ^ "\n}");
+    let listing = Cast.string_of_program cenv
+    in fprintf coc "%s\n" listing
 
 
 

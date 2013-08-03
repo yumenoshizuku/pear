@@ -21,8 +21,9 @@ let run (vars, funcs) =
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env = function
-	Literal(i) -> i, env
-      | Noexpr -> 1, env (* must be non-zero for the for loop predicate *)
+	Literal(i) -> string_of_int i, env
+      | StrLit(i) -> i, env 
+      | Noexpr -> "1", env (* must be non-zero for the for loop predicate *)
       | Id(var) ->
 	  let locals, globals = env in
 	  if NameMap.mem var locals then
@@ -34,17 +35,17 @@ let run (vars, funcs) =
 	  let v1, env = eval env e1 in
           let v2, env = eval env e2 in
 	  let boolean i = if i then 1 else 0 in
-	  (match op with
-	    Add -> v1 + v2
-	  | Sub -> v1 - v2
-	  | Mult -> v1 * v2
-	  | Div -> v1 / v2
-	  | Equal -> boolean (v1 = v2)
-	  | Neq -> boolean (v1 != v2)
-	  | Less -> boolean (v1 < v2)
-	  | Leq -> boolean (v1 <= v2)
-	  | Greater -> boolean (v1 > v2)
-	  | Geq -> boolean (v1 >= v2)), env
+	  string_of_int (match op with
+	    Add -> int_of_string v1 + int_of_string v2
+	  | Sub -> int_of_string v1 - int_of_string v2
+	  | Mult -> int_of_string v1 * int_of_string v2
+	  | Div -> int_of_string v1 / int_of_string v2
+	  | Equal -> boolean (int_of_string v1 = int_of_string v2)
+	  | Neq -> boolean (int_of_string v1 != int_of_string v2)
+	  | Less -> boolean (int_of_string v1 < int_of_string v2)
+	  | Leq -> boolean (int_of_string v1 <= int_of_string v2)
+	  | Greater -> boolean (int_of_string v1 > int_of_string v2)
+	  | Geq -> boolean (int_of_string v1 >= int_of_string v2)), env
       | Assign(var, e) ->
 	  let v, (locals, globals) = eval env e in
 	  if NameMap.mem var locals then
@@ -54,8 +55,8 @@ let run (vars, funcs) =
 	  else raise (Failure ("undeclared identifier " ^ var))
       | Call("print", [e]) ->
 	  let v, env = eval env e in
-	  print_endline (string_of_int v);
-	  0, env
+	  print_endline v;
+	  "0", env
       | Call(f, actuals) ->
 	  let fdecl =
 	    try NameMap.find f func_decls
@@ -69,7 +70,7 @@ let run (vars, funcs) =
 	  let (locals, globals) = env in
 	  try
 	    let globals = call fdecl actuals globals
-	    in 0, (locals, globals)
+	    in "0", (locals, globals)
 	  with ReturnException(v, globals) -> v, (locals, globals)
     in
 

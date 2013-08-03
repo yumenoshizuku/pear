@@ -1,4 +1,7 @@
-{ open Parser }
+{ 
+  open Parser
+  open String
+}
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -27,9 +30,11 @@ rule token = parse
 | "return" { RETURN }
 | "int"    { INT }
 | ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
-| '"'['a'-'z' 'A'-'Z' '0'-'9']*'"' as lxm { print_string (String.sub lxm 1
-(String.length lxm - 2)); STRLIT(String.sub lxm 1
-(String.length lxm - 2)) }
+(*Fix regex*)
+| '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n' '!']+'"' as lxm {
+    STRLIT(String.sub lxm 1 (String.length lxm - 2)) }
+| '''['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n' '!']''' as charlit  {
+       CHAR(charlit.[1]) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }

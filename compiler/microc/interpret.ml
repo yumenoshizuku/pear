@@ -1,4 +1,5 @@
 open Ast
+open String
 
 module NameMap = Map.Make(struct
   type t = string
@@ -23,6 +24,7 @@ let run (vars, funcs) =
     let rec eval env = function
 	Literal(i) -> string_of_int i, env
       | StrLit(i) -> i, env
+      | Char(i) -> String.make 1 i, env
       | Noexpr -> "1", env (* must be non-zero for the for loop predicate *)
       | Id(var) ->
 	  let locals, globals = env in

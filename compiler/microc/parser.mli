@@ -24,6 +24,7 @@ type token =
   | INT
   | LITERAL of (int)
   | STRLIT of (string)
+  | CHAR of (char)
   | ID of (string)
   | EOF
 

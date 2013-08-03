@@ -35,9 +35,11 @@ let rec eval env = function
          let temp = { fname = head.fname; formals = head.formals; locals =
              head.locals; body = (
                  match v1 with
-                 Int(x) -> [Cast.Expr (Call("print_int", [Cast.Literal x]))]
-                 | String(x) -> [Cast.Expr (Call("print_str", [Cast.Id x]))] 
-                 | Char(x) -> [Cast.Expr (Call("print_chr", [Cast.Id (String.make 1 x)]))]  
+                 Int(x) -> [Cast.Expr (Call("printf", [Cast.Id "\"%d\\n\""; Cast.Literal x]))]
+                 | String(x) -> [Cast.Expr (Call("printf", [Cast.Id
+                   "\"%s\\n\""; Cast.Id ("\"" ^ x ^ "\"")]))] 
+                 | Char(x) -> [Cast.Expr (Call("printf", [Cast.Id "\"%c\\n\"";
+                   Cast.Id ("'" ^ (String.make 1 x) ^ "'")]))]  
              ) } in
          let cenv = temp::(List.tl cenv) in
          (v1, (cvars, cenv)), env 

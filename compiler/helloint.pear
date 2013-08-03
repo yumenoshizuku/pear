@@ -1,0 +1,12 @@
+return
+(
+
+var = "Hello World", 
+puts(22+7)
+
+)
+
+(*,
+num = (2*7),
+puts(num+3)
+*)

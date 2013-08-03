@@ -118,4 +118,6 @@ let _ =
       | x   -> x @ [nfdecl]) in  
   let listing = Cast.string_of_program (cvars, ncenv) in
   let oc = open_out "prog.c" in 
-  fprintf oc "%s\n" listing
+  fprintf oc "%s\n" (* Append preprocessor *)
+                    ( "#include <stdio.h>\n" ^
+                      "#include <gtk/gtk.h>\n" ^ listing  )

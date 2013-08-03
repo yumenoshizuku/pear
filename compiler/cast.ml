@@ -57,9 +57,9 @@ let string_of_vdecl id =
   "int " ^ id ^ ";\n"
 
 let string_of_fdecl fdecl =
-    fdecl.fname ^ "[F](" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
-  String.concat "[L]" (List.map string_of_vdecl fdecl.locals) ^
-  String.concat "[B]" (List.map string_of_stmt fdecl.body) ^
+    fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
+  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
+  String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
 let string_of_program (vars, funcs) =

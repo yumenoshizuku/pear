@@ -41,12 +41,6 @@ let rec eval env = function
                  | Char(x) -> [Cast.Expr (Call("print_chr", [Cast.Id (String.make 1 x)]))]  
              ) } in
          let cenv = temp::(List.tl cenv) in
-         (*
-         ((match v1 with
-         Int(x) -> String ("printf(\"%d\\n\", " ^ (string_of_int x) ^ ");")
-         | String(x) -> String ("printf(\"%s\\n\", " ^ x ^ ");")
-         | Char(x) -> String ("printf(\"%s\\n\", " ^ (String.make 1 x) ^ ");")) 
-         *)
          (v1, (cvars, cenv)), env 
  | (Ast.Binop(e1, op, e2), cenv) ->
    let (v1, cenv), vars = eval env (e1, cenv) in
@@ -84,6 +78,11 @@ let rec exec env = function
    
 type action = SwAst | SwCast | SwInterpret
 
+let string_of_primitive primitive = match primitive with
+    Int(x) -> string_of_int x
+ | String(x) -> x
+ | Char(x) -> String.make 1 x
+
 let _ =
   let action = if Array.length Sys.argv > 1 then
     List.assoc Sys.argv.(1) [ ("-c", SwCast);
@@ -98,9 +97,7 @@ let _ =
     SwAst ->
     let oc = open_out "prog.pt" in
     (* Wrap main method and libraries *)
-    fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
-                       "#include <gtk/gtk.h>\n" ^
-                       "int main() {\n" ^ "result" ^ "\n}");
+    fprintf oc "%s\n" (string_of_primitive result);
   | SwCast -> let listing = Cast.string_of_program cenv in
            let oc = open_out "prog.c" in 
            fprintf oc "%s\n" listing

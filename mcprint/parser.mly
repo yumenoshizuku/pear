@@ -1,12 +1,15 @@
 %{ open Ast %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
+%token TYPEDEF GLOBAL FUNC
+%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA NULL
+%token REF
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE 
-%token INT CHAR VOID GTKWIDGET GPOINTER
+%token INT CHAR VOID STRUCT GTKWIDGET GPOINTER
 %token <int> LITERAL
 %token <string> ID 
+%token <string> STRINGLIT
 %token EOF
 
 %nonassoc NOELSE
@@ -23,12 +26,26 @@
 %%
 
 program:
-   /* nothing */ { [], [] }
- /*| program vdecl { ($2 :: fst $1), snd $1 }
- | program fdecl { fst $1, ($2 :: snd $1) }*/
- | vdecl program { ($1 :: fst $2), snd $2 }
- | fdecl program { fst $2, ($1 :: snd $2) }
+  TYPEDEF sdef_list GLOBAL vdecl_list FUNC fdecl_list
+  { Program( List.rev $2, List.rev $4, List.rev $6 ) }
+ 
+ /*| program vdecl { ($2 :: fst $1), snd $1 }*/
+/* | program fdecl { fst $1, ($2 :: snd $1) }*/
 
+   /* nothing */ /*{ [], [] }*/
+/* | vdecl program { ($1 :: fst $2), snd $2 } 
+ | fdecl program { fst $2, ($1 :: snd $2) } 
+*/    
+
+sdef:
+   STRUCT ID LBRACE vdecl_list RBRACE SEMI
+   { { sname = $2;
+     fieldDecls = List.rev $4 } }
+     
+sdef_list:
+    /* nothing */    { [] }
+  | sdef_list sdef { $2 :: $1 } 
+ 
 fdecl:
    datatypeDecl ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
      { { returnType = $1;
@@ -37,13 +54,20 @@ fdecl:
 	 locals = List.rev $7;
 	 body = List.rev $8 } }
 
+fdecl_list:
+    /* nothing */ { [] }
+  | fdecl_list fdecl { $2 :: $1 } 	 
+
 formals_opt:
     /* nothing */ { [] }
   | formal_list   { List.rev $1 }
 
 formal_list:
-    ID                   { [$1] }
-  | formal_list COMMA ID { $3 :: $1 }
+    datatypeDecl ID  { [FormalDecl ($1, $2)] }
+  | formal_list COMMA datatypeDecl ID { FormalDecl($3, $4) :: $1 }
+
+formalDecl: 
+   datatypeDecl ID { FormalDecl ($1, $2) } 
 
 datatypeDecl:
      INT { BasicType( Int ) }
@@ -52,7 +76,10 @@ datatypeDecl:
    | CHAR TIMES { PointerType (Char) }
    | CHAR TIMES TIMES { PointerToPointerType (Char) }
    | VOID { BasicType (Void) }
-   | GTKWIDGET TIMES { PointerType (GtkWidget ) }  
+   | STRUCT ID { BasicType (Struct ($2))}
+   | STRUCT ID TIMES { PointerType (Struct ($2))}   
+   | GTKWIDGET TIMES { PointerType (GtkWidget ) } 
+   | GTKWIDGET TIMES TIMES { PointerToPointerType (GtkWidget ) }     
    | GPOINTER { BasicType (GPointer ) } 
 
 vdecl_list:
@@ -75,7 +102,6 @@ stmt:
   | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
- /* | GTKWIDGET TIMES ID SEMI { Widdecl($3) } */
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -83,7 +109,9 @@ expr_opt:
 
 expr:
     LITERAL          { Literal($1) }
+  | STRINGLIT        { StringLit($1) }  
   | ID               { Id($1) }
+  | NULL             { Null }
   | expr PLUS   expr { Binop($1, Add,   $3) }
   | expr MINUS  expr { Binop($1, Sub,   $3) }
   | expr TIMES  expr { Binop($1, Mult,  $3) }
@@ -94,6 +122,7 @@ expr:
   | expr LEQ    expr { Binop($1, Leq,   $3) }
   | expr GT     expr { Binop($1, Greater,  $3) }
   | expr GEQ    expr { Binop($1, Geq,   $3) }
+  | REF expr         { Unaryop(Ref, $2) }
   | ID ASSIGN expr   { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 } 

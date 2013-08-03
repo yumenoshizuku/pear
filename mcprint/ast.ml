@@ -1,9 +1,13 @@
-type mytypes = Int | Char | Void | GtkWidget | GPointer
+type mytypes = Int | Char | Void | GtkWidget | GPointer | Struct of string
+type uop = Ref
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type expr =
     Literal of int
   | Id of string
+  | StringLit of string  
+  | Null
+  | Unaryop of uop * expr
   | Binop of expr * op * expr
   | Assign of string * expr
   | Call of string * expr list
@@ -16,7 +20,6 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  (*| Widdecl of string*)
   
 type datatypeDecl =
     BasicType of mytypes
@@ -25,17 +28,31 @@ type datatypeDecl =
   
 type vdecl =
     VDecl of datatypeDecl * string
-      
+    
+type formalDecl =
+    FormalDecl of datatypeDecl * string         
 
 type func_decl = {
     returnType : datatypeDecl;
     fname : string;
-    formals : string list;
+    formals : formalDecl list;
     locals : vdecl list;
     body : stmt list;
   }
 
-type program = vdecl list * func_decl list
+type sdef = {
+    sname : string;
+    fieldDecls : vdecl list;
+  } 
+
+type program = 
+   Program of sdef list * vdecl list * func_decl list
+(*{
+   vdecls : vdecl list;
+   fdecls : func_decl list;
+}
+*)
+(*vdecl list * func_decl list *)
 
 
 
@@ -45,6 +62,8 @@ type program = vdecl list * func_decl list
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
+  | StringLit(s) -> s 
+  | Null -> "NULL" 
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
       (match o with
@@ -52,6 +71,10 @@ let rec string_of_expr = function
       | Equal -> "==" | Neq -> "!="
       | Less -> "<" | Leq -> "<=" | Greater -> ">" | Geq -> ">=") ^ " " ^
       string_of_expr e2
+  | Unaryop(o, e) ->
+      (match o with
+	Ref -> "&" ) ^ 
+      string_of_expr e      
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
@@ -76,6 +99,7 @@ let rec string_of_datatype =function
    | Void -> "void"  
    | GtkWidget -> "GtkWidget"
    | GPointer -> "gpointer"
+   | Struct (name) -> "struct " ^ name
    
 let rec string_of_datatypeDecl = function
      BasicType (datatype) -> (string_of_datatype datatype)
@@ -84,14 +108,38 @@ let rec string_of_datatypeDecl = function
 
 let rec string_of_vdecl = function
    VDecl (datatypeDecl, id) -> (string_of_datatypeDecl datatypeDecl) ^ " "^ id ^ ";\n"
+   
+let rec string_of_formalDecl = function
+   FormalDecl (datatypeDecl, id) -> (string_of_datatypeDecl datatypeDecl) ^ " "^ id  
 
 let string_of_fdecl fdecl =
   (string_of_datatypeDecl fdecl.returnType) ^ " " ^ 
-  fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map string_of_formalDecl fdecl.formals) ^ ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+
+let string_of_sdef sdef =
+  "struct " ^ sdef.sname ^ "\n{\n" ^
+  String.concat "" (List.map string_of_vdecl sdef.fieldDecls) ^
+  "};\n"
+
+
+let rec string_of_program = function
+  Program (sdefs, vars, funs) ->
+  String.concat "" (List.map string_of_sdef sdefs) ^ "\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "\n" (List.map string_of_fdecl funs)
+
+(*
+let string_of_program (vars, funs) =
+  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl funs)
+*)
+(*
+let string_of_program program =
+  String.concat "" (List.map string_of_vdecl program.vdecls) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl program.fdecls)
+  (* (string_of_fdecl program.fdecls) *)
+  *)

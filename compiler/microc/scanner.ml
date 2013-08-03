@@ -736,34 +736,35 @@ let
 # 737 "scanner.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
 # 30 "scanner.mll"
-                                          ( STRLIT(String.sub lxm 1
+                                          ( print_string (String.sub lxm 1
+(String.length lxm - 2)); STRLIT(String.sub lxm 1
 (String.length lxm - 2)) )
-# 742 "scanner.ml"
+# 743 "scanner.ml"
 
   | 27 ->
 let
-# 32 "scanner.mll"
+# 33 "scanner.mll"
                                                      lxm
-# 748 "scanner.ml"
+# 749 "scanner.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 32 "scanner.mll"
+# 33 "scanner.mll"
                                                          ( ID(lxm) )
-# 752 "scanner.ml"
+# 753 "scanner.ml"
 
   | 28 ->
-# 33 "scanner.mll"
+# 34 "scanner.mll"
       ( EOF )
-# 757 "scanner.ml"
+# 758 "scanner.ml"
 
   | 29 ->
 let
-# 34 "scanner.mll"
+# 35 "scanner.mll"
        char
-# 763 "scanner.ml"
+# 764 "scanner.ml"
 = Lexing.sub_lexeme_char lexbuf lexbuf.Lexing.lex_start_pos in
-# 34 "scanner.mll"
+# 35 "scanner.mll"
             ( raise (Failure("illegal character " ^ Char.escaped char)) )
-# 767 "scanner.ml"
+# 768 "scanner.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; __ocaml_lex_token_rec lexbuf __ocaml_lex_state
 
@@ -772,14 +773,14 @@ and comment lexbuf =
 and __ocaml_lex_comment_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 37 "scanner.mll"
+# 38 "scanner.mll"
        ( token lexbuf )
-# 778 "scanner.ml"
+# 779 "scanner.ml"
 
   | 1 ->
-# 38 "scanner.mll"
+# 39 "scanner.mll"
        ( comment lexbuf )
-# 783 "scanner.ml"
+# 784 "scanner.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf; __ocaml_lex_comment_rec lexbuf __ocaml_lex_state
 

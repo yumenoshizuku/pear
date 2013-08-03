@@ -1,9 +1,11 @@
 return
 (
+vim = "hi",
+var = 333,
 
-var = "Hello World", 
-puts(22+7)
-
+puts(22+7),
+puts(var+3),
+puts(vim+"ho")
 )
 
 (*,

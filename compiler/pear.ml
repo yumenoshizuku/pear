@@ -7,22 +7,22 @@ module StringMap = Map.Make(struct
   let compare x y = Pervasives.compare x y
   end)
 let vars = StringMap.empty
- 
+
+type primitive =
+    Int of int
+    | String of string
+    | Char of char
+
 exception ReturnException of string * string StringMap.t
 
-let rec last = function
-    | [] -> None
-    | [x] -> Some x
-    | _ :: t -> last t
-
 let rec eval env = function
-   (Ast.Lit(x), cenv) -> (string_of_int x, cenv), env
+   (Ast.Lit(x), cenv) -> (Int x, cenv), env
+ | (Ast.StrLit(x), cenv) -> (String x, cenv), env
+ | (Ast.Char(x), cenv) -> (Char x, cenv), env
  | (Ast.Var(x), cenv) ->
          if StringMap.mem x env then
              (StringMap.find x env, cenv), env
          else raise (Failure ("Error: Undeclared identifier " ^ x))
- | (Ast.StrLit(x), cenv) -> (x, cenv), env
- | (Ast.Char(x), cenv) -> (String.make 1 x, cenv), env
  | (Ast.Seq(e1, e2), cenv) ->
          let value, vars = eval env (e1, cenv) in
          eval vars (e2, cenv)
@@ -34,36 +34,39 @@ let rec eval env = function
          print_string (string_of_int (List.length ((List.hd cenv).body)));
          let head = List.hd cenv in
          let temp = { fname = head.fname; formals = head.formals; locals =
-             head.locals; body = [Cast.Expr (Call("print", [Cast.Id v1]))] } in
-         print_string "hello";
+             head.locals; body = (
+                 match v1 with
+                 Int(x) -> [Cast.Expr (Call("print_int", [Cast.Literal x]))]
+                 | String(x) -> [Cast.Expr (Call("print_str", [Cast.Id x]))] 
+                 | Char(x) -> [Cast.Expr (Call("print_chr", [Cast.Id (String.make 1 x)]))]  
+             ) } in
          let cenv = temp::(List.tl cenv) in
-         (* old code:
-         let rncenv = (match cenv with
-               [] -> raise (Failure ("Error: Syntax error."))
-             |  [x] -> 
-                     ignore (x.body = [Cast.Expr (Call("print", [Cast.Literal
-               (int_of_string v1)]))]); [x]
-             | h :: _ -> ignore (h.body = [Cast.Expr (Call("print",
-             [Cast.Literal
-               (int_of_string v1)]))]); [h]) in
-         let cnewenv = List.rev rncenv in
-         let head = List.hd cnewenv in
-         let hbody = List.hd head.body in
-         print_string (string_of_stmt (hbody));
+         (*
+         ((match v1 with
+         Int(x) -> String ("printf(\"%d\\n\", " ^ (string_of_int x) ^ ");")
+         | String(x) -> String ("printf(\"%s\\n\", " ^ x ^ ");")
+         | Char(x) -> String ("printf(\"%s\\n\", " ^ (String.make 1 x) ^ ");")) 
          *)
-         (*let (last cenv).body = Call("print", [v1])::cenv.body;*)
-         (("printf(\"%s\\n\", " ^ v1 ^ ");"), (cvars, cenv)), env 
+         (v1, (cvars, cenv)), env 
  | (Ast.Binop(e1, op, e2), cenv) ->
    let (v1, cenv), vars = eval env (e1, cenv) in
    let (v2, cenv), vars = eval env (e2, cenv) in
-       ((match op with
-           Ast.Add -> string_of_int ((int_of_string v1) + (int_of_string v2))
-         | Ast.Sub -> string_of_int ((int_of_string v1) - (int_of_string v2))
-         | Ast.Mul -> string_of_int ((int_of_string v1) * (int_of_string v2))
-         | Ast.Div -> string_of_int ((int_of_string v1) / (int_of_string v2))),
+       ((match v1, v2 with
+          Int(x1), Int(x2) ->
+          Int (match op with
+              Ast.Add -> x1 + x2
+            | Ast.Sub -> x1 - x2
+            | Ast.Mul -> x1 * x2
+            | Ast.Div -> x1 / x2)
+        |  String(x1), String(x2) ->
+          String (match op with
+              Ast.Add -> x1 ^ x2
+            | _ -> raise (Failure ("Error: Syntax error. Cannot perform op on
+            string")))
+        | _ -> raise (Failure ("Error: Syntax error. Cannot perform op on
+        string.")) 
+        ),
          cenv), vars
-
-
 
 let cenv = {
    fname = "main";
@@ -79,22 +82,6 @@ let rec exec env = function
          let v, vars = eval env (e, ([], [cenv])) in
    v, vars
    
-   (*raise (ReturnException(v, vars))*)
-(*
-let () =
-    let lexbuf = Lexing.from_channel stdin in
-    let expr = Parser.stmt Scanner.token lexbuf in
-    let (result, cenv), evars = exec vars expr in
-    let oc = open_out "prog.c" in
-    let coc = open_out "cprog.c" in
-    (* Wrap main method and libraries *)
-    fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
-                       "#include <gtk/gtk.h>\n" ^
-                       "int main() {\n" ^ result ^ "\n}");
-    let listing = Cast.string_of_program cenv
-    in fprintf coc "%s\n" listing
-(**)
-*)
 type action = SwAst | SwCast | SwInterpret
 
 let _ =
@@ -109,18 +96,21 @@ let _ =
 
   match action with
     SwAst ->
-    let oc = open_out "prog.pear" in
+    let oc = open_out "prog.pt" in
     (* Wrap main method and libraries *)
     fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
                        "#include <gtk/gtk.h>\n" ^
-                       "int main() {\n" ^ result ^ "\n}");
+                       "int main() {\n" ^ "result" ^ "\n}");
   | SwCast -> let listing = Cast.string_of_program cenv in
-           let oc = open_out "cprog.c" in 
+           let oc = open_out "prog.c" in 
            fprintf oc "%s\n" listing
   | SwInterpret -> ignore (Interpret.run cenv)
 
-(* Can I make prog.c write to file before running the following?
- *
+
+
+
+
+(*
 (* Compile prog.c with gcc.
  * The switches are obtained from the command:
  * `pkg-config --cflags --libs gtk+-3.0` *)

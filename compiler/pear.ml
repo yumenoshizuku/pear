@@ -31,9 +31,15 @@ let rec eval env = function
              (value, cenv), (StringMap.add x value vars)
  | (Ast.Puts(e1), cenv) -> 
          let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
-
-         let rcenv = List.rev cenv in
-         let rcenv = (match rcenv with
+         print_string (string_of_int (List.length ((List.hd cenv).body)));
+         let head = List.hd cenv in
+         let temp = { fname = head.fname; formals = head.formals; locals =
+             head.locals; body = [Cast.Expr (Call("print", [Cast.Literal
+               (int_of_string v1)]))] } in
+         print_string "hello";
+         let cenv = temp::(List.tl cenv) in
+         (*
+         let rncenv = (match cenv with
                [] -> raise (Failure ("Error: Syntax error."))
              |  [x] -> 
                      ignore (x.body = [Cast.Expr (Call("print", [Cast.Literal
@@ -41,10 +47,11 @@ let rec eval env = function
              | h :: _ -> ignore (h.body = [Cast.Expr (Call("print",
              [Cast.Literal
                (int_of_string v1)]))]); [h]) in
-         let cenv = List.rev rcenv in
-         let head = List.hd cenv in
+         let cnewenv = List.rev rncenv in
+         let head = List.hd cnewenv in
          let hbody = List.hd head.body in
          print_string (string_of_stmt (hbody));
+         *)
          (*let (last cenv).body = Call("print", [v1])::cenv.body;*)
          (("printf(\"%s\\n\", " ^ v1 ^ ");"), (cvars, cenv)), env 
  | (Ast.Binop(e1, op, e2), cenv) ->

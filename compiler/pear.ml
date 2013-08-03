@@ -13,7 +13,6 @@ type primitive =
     | String of string
     | Char of char
 
-exception ReturnException of string * string StringMap.t
 
 let rec eval env = function
    (Ast.Lit(x), cenv) -> (Int x, cenv), env
@@ -31,7 +30,7 @@ let rec eval env = function
              (value, cenv), (StringMap.add x value vars)
  | (Ast.Puts(e1), cenv) -> 
          let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
-         print_string (string_of_int (List.length ((List.hd cenv).body)));
+        (* print_string (string_of_int (List.length ((List.hd cenv).body))); *)
          let head = List.hd cenv in
          let temp = { fname = head.fname; formals = head.formals; locals =
              head.locals; body = (
@@ -76,7 +75,7 @@ let rec exec env = function
          let v, vars = eval env (e, ([], [cenv])) in
    v, vars
    
-type action = SwAst | SwCast | SwInterpret
+type action = SwAst | SwCast (*| SwInterpret*)
 
 let string_of_primitive primitive = match primitive with
     Int(x) -> string_of_int x
@@ -87,7 +86,7 @@ let _ =
   let action = if Array.length Sys.argv > 1 then
     List.assoc Sys.argv.(1) [ ("-c", SwCast);
                               ("-a", SwAst);
-                              ("-i", SwInterpret)]
+    (*                        ("-i", SwInterpret) *)]
   else SwCast in 
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.stmt Scanner.token lexbuf in
@@ -101,10 +100,7 @@ let _ =
   | SwCast -> let listing = Cast.string_of_program cenv in
            let oc = open_out "prog.c" in 
            fprintf oc "%s\n" listing
-  | SwInterpret -> ignore (Interpret.run cenv)
-
-
-
+  (*| SwInterpret -> ignore (Interpret.run cenv) *)
 
 
 (*

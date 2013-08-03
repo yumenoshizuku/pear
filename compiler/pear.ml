@@ -23,26 +23,35 @@ let rec eval env = function
              (StringMap.find x env, cenv), env
          else raise (Failure ("Error: Undeclared identifier " ^ x))
  | (Ast.Seq(e1, e2), cenv) ->
-         let value, vars = eval env (e1, cenv) in
-         eval vars (e2, cenv)
+         (*let (value, cenv2), vars = eval env (e1, cenv) in*)
+         let (value, ncenv), vars = eval vars (e1, cenv) in
+         eval vars (e2, ncenv)
  | (Ast.Asn(x, e), cenv) ->
          let (value, cenv), vars = eval env (e, cenv) in 
              (value, cenv), (StringMap.add x value vars)
  | (Ast.Puts(e1), cenv) -> 
          let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
         (* print_string (string_of_int (List.length ((List.hd cenv).body))); *)
-         let head = List.hd cenv in
+         let rcenv = List.rev cenv in
+         let head = List.hd rcenv in
          let temp = { fname = head.fname; formals = head.formals; locals =
              head.locals; body = (
-                 match v1 with
-                 Int(x) -> [Cast.Expr (Call("printf", [Cast.Id "\"%d\\n\""; Cast.Literal x]))]
-                 | String(x) -> [Cast.Expr (Call("printf", [Cast.Id
-                   "\"%s\\n\""; Cast.Id ("\"" ^ x ^ "\"")]))] 
-                 | Char(x) -> [Cast.Expr (Call("printf", [Cast.Id "\"%c\\n\"";
-                   Cast.Id ("'" ^ (String.make 1 x) ^ "'")]))]  
+                 let print = 
+                    ( match v1 with
+                      Int(x) -> Cast.Expr (Call("printf", [Cast.Id "\"%d\\n\""; 
+                        Cast.Literal x]))
+                    | String(x) -> Cast.Expr (Call("printf", [Cast.Id "\"%s\\n\""; 
+                        Cast.Id ("\"" ^ x ^ "\"")]))
+                    | Char(x) -> Cast.Expr (Call("printf", [Cast.Id "\"%c\\n\"";
+                        Cast.Id ("'" ^ (String.make 1 x) ^ "'")])) ) in
+                 match head.body with
+                   [] -> [print]
+                 | [x] -> x::[print]
+                 | x  -> x @ [print] 
              ) } in
-         let cenv = temp::(List.tl cenv) in
-         (v1, (cvars, cenv)), env 
+         let ncenv = temp::(List.tl rcenv) in
+         let rncenv = List.rev ncenv in
+         (v1, (cvars, rncenv)), env 
  | (Ast.Binop(e1, op, e2), cenv) ->
    let (v1, cenv), vars = eval env (e1, cenv) in
    let (v2, cenv), vars = eval env (e2, cenv) in
@@ -87,7 +96,6 @@ let string_of_primitive primitive = match primitive with
 let _ =
   let action = if Array.length Sys.argv > 1 then
     List.assoc Sys.argv.(1) [ ("-c", SwCast);
-                              ("-a", SwAst);
     (*                        ("-i", SwInterpret) *)]
   else SwCast in 
   let lexbuf = Lexing.from_channel stdin in

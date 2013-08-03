@@ -1,11 +1,11 @@
 return
 (
-(*
 vim = "hi",
 var = 333,
-*)
 puts(22+7),
-puts("ee1")
+puts(var+2),
+puts('z'),
+puts(vim+"ho")
 )
 
 (*,

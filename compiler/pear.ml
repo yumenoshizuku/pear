@@ -38,7 +38,7 @@ let rec eval env = function
                (int_of_string v1)]))] } in
          print_string "hello";
          let cenv = temp::(List.tl cenv) in
-         (*
+         (* old code:
          let rncenv = (match cenv with
                [] -> raise (Failure ("Error: Syntax error."))
              |  [x] -> 
@@ -81,7 +81,7 @@ let rec exec env = function
    v, vars
    
    (*raise (ReturnException(v, vars))*)
-
+(*
 let () =
     let lexbuf = Lexing.from_channel stdin in
     let expr = Parser.stmt Scanner.token lexbuf in
@@ -94,8 +94,31 @@ let () =
                        "int main() {\n" ^ result ^ "\n}");
     let listing = Cast.string_of_program cenv
     in fprintf coc "%s\n" listing
+(**)
+*)
+type action = SwAst | SwCast | SwInterpret
 
+let _ =
+  let action = if Array.length Sys.argv > 1 then
+    List.assoc Sys.argv.(1) [ ("-c", SwCast);
+                              ("-a", SwAst);
+                              ("-i", SwInterpret)]
+  else SwCast in 
+  let lexbuf = Lexing.from_channel stdin in
+  let program = Parser.stmt Scanner.token lexbuf in
+  let (result, cenv), evars = exec vars program in
 
+  match action with
+    SwAst ->
+    let oc = open_out "prog.pear" in
+    (* Wrap main method and libraries *)
+    fprintf oc "%s\n" ("#include <stdio.h>\n" ^ 
+                       "#include <gtk/gtk.h>\n" ^
+                       "int main() {\n" ^ result ^ "\n}");
+  | SwCast -> let listing = Cast.string_of_program cenv in
+           let oc = open_out "cprog.c" in 
+           fprintf oc "%s\n" listing
+  | SwInterpret -> ignore (Interpret.run cenv)
 
 (* Can I make prog.c write to file before running the following?
  *

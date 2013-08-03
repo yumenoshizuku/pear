@@ -1,4 +1,4 @@
-open Ast
+open Cast
 
 module NameMap = Map.Make(struct
   type t = string
@@ -22,7 +22,6 @@ let run (vars, funcs) =
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env = function
 	Literal(i) -> i, env
-      | StrLit(i) -> 1, env
       | Noexpr -> 1, env (* must be non-zero for the for loop predicate *)
       | Id(var) ->
 	  let locals, globals = env in

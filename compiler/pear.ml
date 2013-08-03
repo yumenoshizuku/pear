@@ -34,8 +34,7 @@ let rec eval env = function
          print_string (string_of_int (List.length ((List.hd cenv).body)));
          let head = List.hd cenv in
          let temp = { fname = head.fname; formals = head.formals; locals =
-             head.locals; body = [Cast.Expr (Call("print", [Cast.Literal
-               (int_of_string v1)]))] } in
+             head.locals; body = [Cast.Expr (Call("print", [Cast.Id v1]))] } in
          print_string "hello";
          let cenv = temp::(List.tl cenv) in
          (* old code:

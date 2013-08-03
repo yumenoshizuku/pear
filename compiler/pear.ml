@@ -94,40 +94,9 @@ let string_of_primitive primitive = match primitive with
  | Char(x) -> String.make 1 x
 
 let _ =
-  let action = if Array.length Sys.argv > 1 then
-    List.assoc Sys.argv.(1) [ ("-c", SwCast);
-    (*                        ("-i", SwInterpret) *)]
-  else SwCast in 
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.stmt Scanner.token lexbuf in
   let (result, cenv), evars = exec vars program in
-
-  match action with
-    SwAst ->
-    let oc = open_out "prog.pt" in
-    (* Wrap main method and libraries *)
-    fprintf oc "%s\n" (string_of_primitive result);
-  | SwCast -> let listing = Cast.string_of_program cenv in
-           let oc = open_out "prog.c" in 
-           fprintf oc "%s\n" listing
-  (*| SwInterpret -> ignore (Interpret.run cenv) *)
-
-
-(*
-(* Compile prog.c with gcc.
- * The switches are obtained from the command:
- * `pkg-config --cflags --libs gtk+-3.0` *)
-open Unix;;
-let gcc () = execvp "gcc" [|"gcc"; "-o"; "prog"; "-pthread";
-"-I/usr/include/gtk-3.0"; "-I/usr/include/at-spi2-atk/2.0";
-"-I/usr/include/gtk-3.0"; "-I/usr/include/gio-unix-2.0/";
-"-I/usr/include/cairo"; "-I/usr/include/pango-1.0"; "-I/usr/include/harfbuzz";
-"-I/usr/include/pango-1.0"; "-I/usr/include/atk-1.0"; "-I/usr/include/cairo";
-"-I/usr/include/pixman-1"; "-I/usr/include/freetype2"; "-I/usr/include/libdrm";
-"-I/usr/include/libpng16"; "-I/usr/include/gdk-pixbuf-2.0";
-"-I/usr/include/libpng16"; "-I/usr/include/glib-2.0";
-"-I/usr/lib/glib-2.0/include"; "-lgtk-3"; "-lgdk-3"; "-lpangocairo-1.0";
-"-lpango-1.0"; "-latk-1.0"; "-lcairo-gobject"; "-lcairo"; "-lgdk_pixbuf-2.0";
-"-lgio-2.0"; "-lgobject-2.0"; "-lglib-2.0"; "prog.c"|];;
-handle_unix_error gcc ();;
-*)
+  let listing = Cast.string_of_program cenv in
+  let oc = open_out "prog.c" in 
+  fprintf oc "%s\n" listing

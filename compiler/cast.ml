@@ -1,8 +1,12 @@
+open String
+
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type expr =
     Literal of int
   | Id of string
+  | Char of char
+  | StrLit of string
   | Binop of expr * op * expr
   | Assign of string * expr
   | Call of string * expr list
@@ -16,7 +20,9 @@ type stmt =
   | For of expr * expr * expr * stmt
   | While of expr * stmt
 
+
 type func_decl = {
+    returnType : string;
     fname : string;
     formals : string list;
     locals : string list;
@@ -28,6 +34,8 @@ type program = string list * func_decl list
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
+  | Char(c) -> String.make 1 c
+  | StrLit(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
       (match o with
@@ -57,7 +65,7 @@ let string_of_vdecl id =
   "int " ^ id ^ ";\n"
 
 let string_of_fdecl fdecl =
-    fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
+    fdecl.returnType ^ " " ^ fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"

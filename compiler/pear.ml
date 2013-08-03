@@ -31,48 +31,49 @@ let rec eval env = function
              (value, cenv), (StringMap.add x value vars)
  | (Ast.Puts(e1), cenv) -> 
          let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
-        (* print_string (string_of_int (List.length ((List.hd cenv).body))); *)
-         let rcenv = List.rev cenv in
-         let head = List.hd rcenv in
-         let temp = { fname = head.fname; formals = head.formals; locals =
-             head.locals; body = (
-                 let print = 
-                    ( match v1 with
-                      Int(x) -> Cast.Expr (Call("printf", [Cast.Id "\"%d\\n\""; 
-                        Cast.Literal x]))
-                    | String(x) -> Cast.Expr (Call("printf", [Cast.Id "\"%s\\n\""; 
-                        Cast.Id ("\"" ^ x ^ "\"")]))
-                    | Char(x) -> Cast.Expr (Call("printf", [Cast.Id "\"%c\\n\"";
-                        Cast.Id ("'" ^ (String.make 1 x) ^ "'")])) ) in
-                 match head.body with
-                   [] -> [print]
-                 | [x] -> x::[print]
-                 | x  -> x @ [print] 
-             ) } in
-         let ncenv = temp::(List.tl rcenv) in
-         let rncenv = List.rev ncenv in
-         (v1, (cvars, rncenv)), env 
+         let lfdecl = List.hd (List.rev cenv) in
+         let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
+             lfdecl.locals; body = (
+               let print = 
+                 ( match v1 with
+                     Int(x) -> 
+                       Cast.Expr (Call("printf", [Cast.StrLit "\"%d\\n\""; Cast.Literal x]))
+                   | String(x) -> 
+                       Cast.Expr (Call("printf", [Cast.StrLit "\"%s\\n\""; Cast.StrLit ("\"" ^ x ^ "\"")]))
+                   | Char(x) -> 
+                       Cast.Expr (Call("printf", [Cast.StrLit "\"%c\\n\""; Cast.StrLit ("'" ^ (String.make 1 x) ^ "'")])) ) in
+                 match lfdecl.body with
+                   []  ->     [print]
+                 | [x] ->  x::[print]
+                 | x   -> x @ [print] 
+           ) } in
+         let ncenv = 
+           ( match cenv with
+               []  ->     []
+             | [x] -> [nfdecl]
+             | x   -> x @ [nfdecl]) in 
+         (v1, (cvars, ncenv)), env 
  | (Ast.Binop(e1, op, e2), cenv) ->
    let (v1, cenv), vars = eval env (e1, cenv) in
    let (v2, cenv), vars = eval env (e2, cenv) in
        ((match v1, v2 with
-          Int(x1), Int(x2) ->
-          Int (match op with
-              Ast.Add -> x1 + x2
-            | Ast.Sub -> x1 - x2
-            | Ast.Mul -> x1 * x2
-            | Ast.Div -> x1 / x2)
-        |  String(x1), String(x2) ->
-          String (match op with
-              Ast.Add -> x1 ^ x2
-            | _ -> raise (Failure ("Error: Syntax error. Cannot perform op on
-            string")))
-        | _ -> raise (Failure ("Error: Syntax error. Cannot perform op on
-        string.")) 
-        ),
-         cenv), vars
+            Int(x1), Int(x2) ->
+            Int (match op with
+                   Ast.Add -> x1 + x2
+                 | Ast.Sub -> x1 - x2
+                 | Ast.Mul -> x1 * x2
+                 | Ast.Div -> x1 / x2)
+         |  String(x1), String(x2) ->
+            String (match op with
+                   Ast.Add -> x1 ^ x2
+                 | _ -> raise (Failure 
+                     ("Error: Invalid string operation.")))
+         | _ -> raise (Failure 
+                     ("Error: Invalid operation.")) 
+        ), cenv), vars
 
 let cenv = {
+   returnType = "int";
    fname = "main";
    formals = [];
    locals = [];
@@ -96,7 +97,25 @@ let string_of_primitive primitive = match primitive with
 let _ =
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.stmt Scanner.token lexbuf in
-  let (result, cenv), evars = exec vars program in
-  let listing = Cast.string_of_program cenv in
+  let (result, (cvars, cenv)), evars = exec vars program in
+
+  (* Append "return 0;" at the end of the main method *) 
+  let lfdecl = List.hd (List.rev cenv) in
+  let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
+    lfdecl.locals; body = (
+      (* Append "return 0;" as the last body declaration *)
+      let main_return = Cast.Return(Cast.Literal 0) in
+      match lfdecl.body with
+        []  ->     [main_return]
+      | [x] ->  x::[main_return]
+      | x   -> x @ [main_return] 
+      ) } in
+  (* Append to the new cenv *)
+  let ncenv = 
+    ( match cenv with
+        []  ->     []
+      | [x] ->     [nfdecl]
+      | x   -> x @ [nfdecl]) in  
+  let listing = Cast.string_of_program (cvars, ncenv) in
   let oc = open_out "prog.c" in 
   fprintf oc "%s\n" listing

@@ -4,9 +4,8 @@ default:
 	ocamlyacc parser.mly
 	ocamlc -c ast.mli
 	ocamlc -c cast.ml
-	ocamlc -c interpret.ml
 	ocamlc -c parser.mli
 	ocamlc -c scanner.ml
 	ocamlc -c parser.ml
 	ocamlc -c pear.ml
-	ocamlc -o pear unix.cma parser.cmo scanner.cmo cast.cmo interpret.cmo pear.cmo
+	ocamlc -o pear unix.cma parser.cmo scanner.cmo cast.cmo pear.cmo

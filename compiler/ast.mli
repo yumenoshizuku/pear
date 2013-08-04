@@ -8,6 +8,8 @@ type expr =
     | Var of string
     | Seq of expr * expr
     | Asn of string * expr
+    | Call of string * expr list
+    | Declare of string * string list * expr
     | Puts of expr
 
 type stmt =

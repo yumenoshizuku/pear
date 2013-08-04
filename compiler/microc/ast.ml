@@ -31,6 +31,7 @@ let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | StrLit(l) -> l
   | Id(s) -> s
+  | Char(c) -> String.make 1 c
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
       (match o with
@@ -57,7 +58,7 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
 let string_of_vdecl id =
-  "int " ^ id ^ ";\n"
+    "[V]" ^ "int " ^ id ^ ";\n"
 
 let string_of_fdecl fdecl =
     fdecl.fname ^ "[F](" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^

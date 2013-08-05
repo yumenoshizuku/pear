@@ -10,7 +10,7 @@ rule token = parse
    | '('      { LPAREN }  | ')'      { RPAREN } 
    | '='      { ASSIGN }  | ','      { COMMA }    
    | "puts"   { PUTS }    | "return" { RETURN }
-   | eof      { EOF }
+   | eof      { EOF }  | ';' { SEMI } 
    | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
    | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']+ as obj { OBJECT(obj) }
    | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9']+ as var { ID(var) }
@@ -19,6 +19,7 @@ rule token = parse
    | '''['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']''' as charlit
        { CHAR(charlit.[1]) }
 
+(* Ignore comments *)
 and comment = parse
     "*)"      { token lexbuf }
    | _        { comment lexbuf }

@@ -8,6 +8,7 @@
 %token <string> STRLIT
 %token <char> CHAR
 %token <string> ID
+%token <string> OBJECT
 %token EOF
 
 %nonassoc NOELSE
@@ -25,15 +26,15 @@
 
 program:
    /* nothing */ { [], [] }
- | program vdecl { ($2 :: fst $1), snd $1 }
- | program fdecl { fst $1, ($2 :: snd $1) }
+ | program OBJECT ID COMMA { ($3 :: fst $1), snd $1 }
+ | program fdecl COMMA { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+   OBJECT LPAREN formals_opt RPAREN LPAREN stmt_list RPAREN
      { { fname = $1;
 	 formals = $3;
-	 locals = List.rev $6;
-	 body = List.rev $7 } }
+	 (*locals = List.rev $6;*)
+	 body = List.rev $6 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -43,26 +44,27 @@ formal_list:
     ID                   { [$1] }
   | formal_list COMMA ID { $3 :: $1 }
 
-vdecl_list:
-    /* nothing */    { [] }
+/*vdecl_list:*/
+    /* nothing */ /*   { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-   INT ID SEMI { $2 }
-
+   SEMI OBJECT ID COMMA { $2 }
+*/
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    expr SEMI { Expr($1) }
-  | RETURN expr SEMI { Return($2) }
+    expr COMMA { Expr($1) }
+  | RETURN expr COMMA { Return($2) }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
-  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
+  | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
+  | OBJECT ID COMMA { Declare($1, $2) }
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -84,7 +86,7 @@ expr:
   | expr GT     expr { Binop($1, Greater,  $3) }
   | expr GEQ    expr { Binop($1, Geq,   $3) }
   | ID ASSIGN expr   { Assign($1, $3) }
-  | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
+  | OBJECT LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:

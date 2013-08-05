@@ -9,8 +9,10 @@
 
 open String
 
+(* C operator types *)
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
+(* Expressions *)
 type expr =
     Literal of int
   | Id of string
@@ -21,6 +23,7 @@ type expr =
   | Call of string * expr list
   | Noexpr
 
+(* Statements *)
 type stmt =
     Block of stmt list
   | Expr of expr
@@ -29,11 +32,13 @@ type stmt =
   | For of expr * expr * expr * stmt
   | While of expr * stmt
 
+(* Variable declaration *)
 type var_decl = {
   varType : string;
   vname : string;
 }
 
+(* Function declaration *)
 type func_decl = {
   returnType : string;
   fname : string;
@@ -42,6 +47,7 @@ type func_decl = {
   body : stmt list;
 }
 
+(* Program as a tuple of variable and function declaration lists *)
 type program = var_decl list * func_decl list
 
 (* Print an expression as a string *)

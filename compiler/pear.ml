@@ -1,3 +1,12 @@
+(*
+** Pear Translator
+** ===============
+** By Rui Chen, Fanxing Meng, and Risto Stevcev
+**
+** Website:
+** https://github.com/gy3h/pear
+*)
+
 open Ast
 open Cast
 open Printf
@@ -31,8 +40,7 @@ let rec eval env = function
          let (value, cenv), (vars, objs) = eval env (e, cenv) in 
              (value, cenv), ((StringMap.add x value vars), objs)
  | (Ast.Call(x, e), cenv) -> (Int 1, cenv), env
- | (Ast.Declare(x, f, e), cenv) -> (Int 1, cenv), env
-         
+ | (Ast.Declare(x, f, e), cenv) -> (Int 1, cenv), env 
  | (Ast.Puts(e1), cenv) -> 
          let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
          (* Get main method (last function declaration) *)
@@ -100,7 +108,8 @@ let rec exec env = function
  | Ast.Return(e) ->
          let v, vars = eval env (e, ([], [cenv])) in
    v, vars
-   
+
+
 (* Print a primitive type (for debugging) *)
 let string_of_primitive primitive = match primitive with
     Int(x) -> string_of_int x

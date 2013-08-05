@@ -26,6 +26,7 @@ type token =
   | STRLIT of (string)
   | CHAR of (char)
   | ID of (string)
+  | OBJECT of (string)
   | EOF
 
 val program :

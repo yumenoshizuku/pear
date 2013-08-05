@@ -17,11 +17,12 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
+  | Declare of string * string
 
 type func_decl = {
     fname : string;
     formals : string list;
-    locals : string list;
+  (*  locals : string list; *)
     body : stmt list;
   }
 
@@ -62,7 +63,7 @@ let string_of_vdecl id =
 
 let string_of_fdecl fdecl =
     fdecl.fname ^ "[F](" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
-  String.concat "[L]" (List.map string_of_vdecl fdecl.locals) ^
+  (*String.concat "[L]" (List.map string_of_vdecl fdecl.locals) ^ *)
   String.concat "[B]" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 

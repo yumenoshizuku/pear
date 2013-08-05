@@ -9,13 +9,14 @@ rule token = parse
    | '-'      { MINUS }   | '/'      { DIVIDE }   
    | '('      { LPAREN }  | ')'      { RPAREN } 
    | '='      { ASSIGN }  | ','      { COMMA }
-   (*| '.'      { DOT }*)
+   | '.'      { DOT }
    | "puts"   { PUTS }    | "return" { RETURN }
    | eof      { EOF }
    | "Window" { WINDOW }
+   | "Label"  { LABEL }
    | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
-   | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']+ as var { VARIABLE(var) }
-   | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']+'"' as strlit  
+   | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as var { VARIABLE(var) }
+   | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']*'"' as strlit  
        { STRLITERAL(String.sub strlit 1 (String.length strlit - 2)) }
    | '''['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']''' as charlit
        { CHAR(charlit.[1]) }

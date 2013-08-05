@@ -51,13 +51,12 @@ type sdef = {
   } 
 
 type program = 
-   Program of sdef list * vdecl list * func_decl list
-(*{
-   vdecls : vdecl list;
-   fdecls : func_decl list;
+{
+   types  : sdef list;
+   globals : vdecl list;
+   funs : func_decl list;
 }
-*)
-(*vdecl list * func_decl list *)
+
 
 
 
@@ -137,21 +136,21 @@ let string_of_sdef sdef =
   String.concat "" (List.map string_of_vdecl sdef.fieldDecls) ^
   "};\n"
 
-
+(*
 let rec string_of_program = function
   Program (sdefs, vars, funs) ->
   String.concat "" (List.map string_of_sdef sdefs) ^ "\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funs)
-
+*)
 (*
 let string_of_program (vars, funs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funs)
 *)
-(*
+
 let string_of_program program =
-  String.concat "" (List.map string_of_vdecl program.vdecls) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl program.fdecls)
-  (* (string_of_fdecl program.fdecls) *)
-  *)
+  String.concat "" (List.map string_of_sdef program.types) ^ "\n" ^
+  String.concat "" (List.map string_of_vdecl program.globals) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl program.funs)
+  

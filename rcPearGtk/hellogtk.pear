@@ -3,6 +3,7 @@ return
 vim = "hi",
 var = 333,
 win = Window(),
+label = win.Label(""),
 puts(22+7),
 puts(var+2),
 puts('z'),

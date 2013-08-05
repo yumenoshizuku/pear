@@ -10,6 +10,7 @@ type expr =
     | Asn of string * expr
     | Puts of expr
     | Window of string
+    | CreateLabel of string * string * string (* label variable name, window variable name and label initial text *) 
 
 type stmt =
     Expr of expr

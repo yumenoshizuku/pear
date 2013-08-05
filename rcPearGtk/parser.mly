@@ -1,11 +1,11 @@
 %{ open Ast %}
 
-%token PLUS MINUS TIMES DIVIDE EOF PUTS COMMA ASSIGN
+%token PLUS MINUS TIMES DIVIDE EOF PUTS COMMA ASSIGN DOT
 %token <int> LITERAL
 %token <string> STRLITERAL
 %token <char> CHAR
 %token <string> VARIABLE
-%token WINDOW
+%token WINDOW LABEL
 %token LPAREN RPAREN
 %token RETURN
 
@@ -35,6 +35,7 @@ expr:
     | expr COMMA expr         { Seq($1, $3) }
     | LPAREN expr RPAREN      { $2 }
     | VARIABLE ASSIGN WINDOW LPAREN RPAREN   { Window($1) }
+    | VARIABLE ASSIGN VARIABLE DOT LABEL LPAREN STRLITERAL RPAREN { CreateLabel ($1, $3, $7)}
 
 stmt:
       expr { Expr($1) }

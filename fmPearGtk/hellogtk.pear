@@ -1,0 +1,21 @@
+return
+(
+win = Window(),
+win.WinPosition(center),
+win.WinSize(300 200),
+win.Title("some title"),
+vb=Vbox(),
+win.Contain(vb),
+mb=Menubar(),
+menu1=Menu(),
+file=Menuitem(),
+file.MenuItemLabel("File"),
+quit=Menuitem(),
+quit.MenuItemLabel("Quit"),
+file.InMenu(menu1),
+quit.AppendMenu(menu1),
+file.AppendMenu(mb),
+vb.BoxPack(mb),
+quit.ClickQuit()
+)
+

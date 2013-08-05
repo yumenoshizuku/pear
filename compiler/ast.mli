@@ -1,25 +1,43 @@
 (* Operator types *)
-type operator = Add | Sub | Mul | Div
+type op = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 (* Expression as the main type *)
 type expr =
-    Binop of expr * operator * expr
-    | Lit of int
-    | StrLit of string
-    | Char of char
-    | Obj of string
-    | Var of string
-    | Seq of expr * expr
-    | Asn of string * expr
-    | Puts of expr
-    | Call of string * expr list
-    | Declare of string * string list * expr
+    Literal of int
+  | StrLit of string
+  | Char of char
+  | Id of string
+  | Binop of expr * op * expr
+  | Assign of string * expr
+  | Call of string * expr list
+  | Noexpr
 
 (* Statement that executes the program and appends the main method *)
 type stmt =
-    Expr of expr
-    | Return of expr
+    Block of stmt list
+  | Expr of expr
+  | Return of expr
+  | If of expr * stmt * stmt
+  | For of expr * expr * expr * stmt
+  | While of expr * stmt
+  | Declare of string * string
 
+
+(* Variable declaration *)
+type var_decl = {
+  varType : string;
+  vname : string;
+}
+
+(* Function declaration *)
+type obj_decl = {
+  oname : string;
+  oformals : string list;
+  (*locals : var_decl list;*)
+  obody : stmt list;
+}
+
+type program = string list * obj_decl list
 
 (* Formals carry both their types and their values *)
 type formal =

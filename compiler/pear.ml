@@ -19,28 +19,30 @@ let vars = StringMap.empty
 let objs = StringMap.empty
 
 (* Primitive types that translate to C *)
+(*
 type primitive =
     Int of int
     | String of string
     | Char of char
-
+    *)
+(*
 let rec eval env = function
-   (Ast.Lit(x), cenv) -> (Int x, cenv), env
+   (Ast.Literal(x), cenv) -> (Int x, cenv), env
  | (Ast.StrLit(x), cenv) -> (String x, cenv), env
  | (Ast.Char(x), cenv) -> (Char x, cenv), env
- | (Ast.Var(x), cenv) ->
+ | (Ast.Id(x), cenv) ->
          let vars, objs = env in
          if StringMap.mem x vars then
              (StringMap.find x vars, cenv), env
          else raise (Failure ("Error: Undeclared identifier " ^ x))
+         (*
  | (Ast.Seq(e1, e2), cenv) ->
          let (value, ncenv), vars = eval env (e1, cenv) in
-         eval vars (e2, ncenv)
- | (Ast.Asn(x, e), cenv) ->
+         eval vars (e2, ncenv)*)
+ | (Ast.Assign(x, e), cenv) ->
          let (value, cenv), (vars, objs) = eval env (e, cenv) in 
              (value, cenv), ((StringMap.add x value vars), objs)
  | (Ast.Call(x, e), cenv) -> (Int 1, cenv), env
- | (Ast.Declare(x, f, e), cenv) -> (Int 1, cenv), env 
  | (Ast.Puts(e1), cenv) -> 
          let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
          (* Get main method (last function declaration) *)
@@ -91,7 +93,7 @@ let rec eval env = function
          | _ -> raise (Failure 
                      ("Error: Invalid operation.")) 
         ), cenv), vars
-
+*)
 (* Create the main method *)
 let cenv = {
    returnType = "int";
@@ -100,7 +102,7 @@ let cenv = {
    locals = [];
    body = [];
 }
-
+(*
 let rec exec env = function
  (* Initialize environment with the main method and no variable declarations *)
    Ast.Expr(e) ->
@@ -108,17 +110,158 @@ let rec exec env = function
  | Ast.Return(e) ->
          let v, vars = eval env (e, ([], [cenv])) in
    v, vars
+*)
 
 
+
+
+
+
+module NameMap = Map.Make(struct
+  type t = string
+  let compare x y = Pervasives.compare x y
+end)
+
+exception ReturnException of string * string NameMap.t
+
+(* Main entry point: run a program *)
+
+let run (vars, funcs) =
+  (* Put function declarations in a symbol table *)
+  let func_decls = List.fold_left
+      (fun funcs odecl -> NameMap.add odecl.oname odecl funcs)
+      NameMap.empty funcs
+  in
+
+  (* Invoke a function and return an updated global symbol table *)
+  let rec call odecl actuals globals =
+
+    (* Evaluate an expression and return (value, updated environment) *)
+    let rec eval env = function
+	Ast.Literal(i) -> string_of_int i, env
+      | Ast.StrLit(i) -> i, env
+      | Ast.Char(i) -> String.make 1 i, env
+      | Ast.Noexpr -> "1", env (* must be non-zero for the for loop predicate *)
+      | Ast.Id(var) ->
+	  let locals, globals = env in
+	  if NameMap.mem var locals then
+	    (NameMap.find var locals), env
+	  else if NameMap.mem var globals then
+	    (NameMap.find var globals), env
+	  else raise (Failure ("undeclared identifier " ^ var))
+      | Ast.Binop(e1, op, e2) ->
+	  let v1, env = eval env e1 in
+          let v2, env = eval env e2 in
+	  let boolean i = if i then 1 else 0 in
+	  string_of_int (match op with
+	    Ast.Add -> int_of_string v1 + int_of_string v2
+	  | Ast.Sub -> int_of_string v1 - int_of_string v2
+	  | Ast.Mul -> int_of_string v1 * int_of_string v2
+	  | Ast.Div -> int_of_string v1 / int_of_string v2
+	  | Ast.Equal -> boolean (v1 = v2)
+	  | Ast.Neq -> boolean (v1 != v2)
+	  | Ast.Less -> boolean (v1 < v2)
+	  | Ast.Leq -> boolean (v1 <= v2)
+	  | Ast.Greater -> boolean (v1 > v2)
+	  | Ast.Geq -> boolean (v1 >= v2)), env
+      | Ast.Assign(var, e) ->
+	  let v, (locals, globals) = eval env e in
+	  if NameMap.mem var locals then
+	    v, (NameMap.add var v locals, globals)
+	  else if NameMap.mem var globals then
+	    v, (locals, NameMap.add var v globals)
+	  else raise (Failure ("undeclared identifier " ^ var))
+      | Ast.Call("Print", [e]) ->
+	  let v, env = eval env e in
+	  print_endline v;
+	  "0", env
+      | Ast.Call(f, actuals) ->
+	  let odecl =
+	    try NameMap.find f func_decls
+	    with Not_found -> raise (Failure ("undefined function " ^ f))
+	  in
+	  let actuals, env = List.fold_left
+	      (fun (actuals, env) actual ->
+		let v, env = eval env actual in v :: actuals, env)
+   	      ([], env) (List.rev actuals)
+	  in
+	  let (locals, globals) = env in
+	  try
+	    let globals = call odecl actuals globals
+	    in "0", (locals, globals)
+	  with ReturnException(v, globals) -> v, (locals, globals)
+    in
+
+    (* Execute a statement and return an updated environment *)
+    let rec exec env = function
+	Ast.Block(stmts) -> List.fold_left exec env stmts
+      | Ast.Expr(e) -> let _, env = eval env e in env
+      | Ast.If(e, s1, s2) ->
+	  let v, env = eval env e in
+	  exec env (if int_of_string v != 0 then s1 else s2)
+      | Ast.While(e, s) ->
+	  let rec loop env =
+	    let v, env = eval env e in
+	    if int_of_string v != 0 then loop (exec env s) else env
+	  in loop env
+      | Ast.For(e1, e2, e3, s) ->
+	  let _, env = eval env e1 in
+	  let rec loop env =
+	    let v, env = eval env e2 in
+	    if int_of_string v != 0 then
+	      let _, env = eval (exec env s) e3 in
+	      loop env
+	    else
+	      env
+	  in loop env
+      | Ast.Return(e) ->
+	  let v, (locals, globals) = eval env e in
+	  raise (ReturnException(v, globals))
+      | Ast.Declare(o, v) -> 
+              let (locals, globals) = env in 
+              let var = ((NameMap.add (o ^ " " ^ v) "0" locals), globals) in 
+              var
+
+    in
+
+    (* Enter the function: bind actual values to formal arguments *)
+    let locals =
+      try List.fold_left2
+	  (fun locals formal actual -> NameMap.add formal actual locals)
+	  NameMap.empty odecl.oformals actuals
+      with Invalid_argument(_) ->
+	raise (Failure ("wrong number of arguments passed to " ^ odecl.oname))
+    in
+    (* Initialize local variables to 0 *)
+    (*
+    let locals = List.fold_left
+	(fun locals local -> NameMap.add local "0" locals) locals odecl.locals
+    in
+    *)
+    (* Execute each statement in sequence, return updated global symbol table *)
+    snd (List.fold_left exec (locals, globals) odecl.obody)
+
+  (* Run a program: initialize global variables to 0, find and run "main" *)
+  in let globals = List.fold_left
+      (fun globals vdecl -> NameMap.add vdecl "0" globals) NameMap.empty vars
+  in try
+    call (NameMap.find "Main" func_decls) [] globals
+  with Not_found -> raise (Failure ("did not find the main() function"))
+
+
+
+
+(*
 (* Print a primitive type (for debugging) *)
 let string_of_primitive primitive = match primitive with
     Int(x) -> string_of_int x
  | String(x) -> x
  | Char(x) -> String.make 1 x
-
+*)
 let _ =
   let lexbuf = Lexing.from_channel stdin in
-  let program = Parser.stmt Scanner.token lexbuf in
+  let program = Parser.program Scanner.token lexbuf in
+  run program (*in
   let (result, (cvars, cenv)), evars = exec (vars, objs) program in
 
   (* Append "return 0;" at the end of the main method *) 
@@ -143,3 +286,4 @@ let _ =
   fprintf oc "%s\n" (* Append preprocessor *)
                     ( "#include <stdio.h>\n" ^
                       "#include <gtk/gtk.h>\n" ^ listing  )
+*)

@@ -1,25 +1,42 @@
-{ open Parser
+{ 
+  open Parser
   open String
 }
 
-rule token = parse 
-     [' ' '\t' '\r' '\n'] { token lexbuf }
-   | "(*"                 { comment lexbuf }
-   | '+'      { PLUS }    | '*'      { TIMES } 
-   | '-'      { MINUS }   | '/'      { DIVIDE }   
-   | '('      { LPAREN }  | ')'      { RPAREN } 
-   | '='      { ASSIGN }  | ','      { COMMA }    
-   | "puts"   { PUTS }    | "return" { RETURN }
-   | eof      { EOF }  | ';' { SEMI } 
-   | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
-   | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']+ as obj { OBJECT(obj) }
-   | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9']+ as var { ID(var) }
-   | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']+'"' as strlit  
-       { STRLITERAL(String.sub strlit 1 (String.length strlit - 2)) }
-   | '''['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']''' as charlit
-       { CHAR(charlit.[1]) }
+rule token = parse
+  [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
+| "(*"     { comment lexbuf }           (* Comments *)
+| '('      { LPAREN }
+| ')'      { RPAREN }
+| ','      { COMMA }
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { TIMES }
+| '/'      { DIVIDE }
+| '='      { ASSIGN }
+| "=="     { EQ }
+| "!="     { NEQ }
+| '<'      { LT }
+| "<="     { LEQ }
+| ">"      { GT }
+| ">="     { GEQ }
+| "if"     { IF }
+| "else"   { ELSE }
+| "for"    { FOR }
+| "while"  { WHILE }
+| "return" { RETURN }
+| "int"    { INT }
+| ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
+(*Fix regex*)
+| '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n' '!']+'"' as lxm {
+    STRLIT(String.sub lxm 1 (String.length lxm - 2)) }
+| '''['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n' '!']''' as charlit  {
+       CHAR(charlit.[1]) }
+| ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as obj { OBJECT(obj) } 
+| ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
+| eof { EOF }
+| _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
-(* Ignore comments *)
 and comment = parse
-    "*)"      { token lexbuf }
-   | _        { comment lexbuf }
+  "*)" { token lexbuf }
+| _    { comment lexbuf }

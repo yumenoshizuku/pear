@@ -138,22 +138,22 @@ let run (vars, funcs) =
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env = function
-	Ast.Literal(i) -> string_of_int i, env
-      | Ast.StrLit(i) -> i, env
-      | Ast.Char(i) -> String.make 1 i, env
-      | Ast.Noexpr -> "1", env (* must be non-zero for the for loop predicate *)
-      | Ast.Id(var) ->
-	  let locals, globals = env in
+	(Ast.Literal(i), cenv) -> (string_of_int i, cenv), env
+      | (Ast.StrLit(i), cenv) -> (i, cenv), env
+      | (Ast.Char(i), cenv) -> (String.make 1 i, cenv), env
+      | (Ast.Noexpr, cenv) -> ("1", cenv), env (* must be non-zero for the for loop predicate *)
+      | (Ast.Id(var), cenv) ->
+      let locals, globals = env in
 	  if NameMap.mem var locals then
-	    (NameMap.find var locals), env
+	    ((NameMap.find var locals), cenv), env
 	  else if NameMap.mem var globals then
-	    (NameMap.find var globals), env
+	    ((NameMap.find var globals), cenv), env
 	  else raise (Failure ("undeclared identifier " ^ var))
-      | Ast.Binop(e1, op, e2) ->
-	  let v1, env = eval env e1 in
-          let v2, env = eval env e2 in
+      | (Ast.Binop(e1, op, e2), cenv) ->
+	  let (v1, cenv), env = eval env (e1, cenv) in
+          let (v2, cenv), env = eval env (e2, cenv) in
 	  let boolean i = if i then 1 else 0 in
-	  string_of_int (match op with
+	  (string_of_int (match op with
 	    Ast.Add -> int_of_string v1 + int_of_string v2
 	  | Ast.Sub -> int_of_string v1 - int_of_string v2
 	  | Ast.Mul -> int_of_string v1 * int_of_string v2
@@ -163,59 +163,60 @@ let run (vars, funcs) =
 	  | Ast.Less -> boolean (v1 < v2)
 	  | Ast.Leq -> boolean (v1 <= v2)
 	  | Ast.Greater -> boolean (v1 > v2)
-	  | Ast.Geq -> boolean (v1 >= v2)), env
-      | Ast.Assign(var, e) ->
-	  let v, (locals, globals) = eval env e in
+	  | Ast.Geq -> boolean (v1 >= v2)), cenv), env
+      | (Ast.Assign(var, e), cenv) ->
+	  let (v, cenv), (locals, globals) = eval env (e, cenv) in
+      print_endline v;
 	  if NameMap.mem var locals then
-	    v, (NameMap.add var v locals, globals)
+	    (v, cenv), (NameMap.add var v locals, globals)
 	  else if NameMap.mem var globals then
-	    v, (locals, NameMap.add var v globals)
+	    (v, cenv), (locals, NameMap.add var v globals)
 	  else raise (Failure ("undeclared identifier " ^ var))
-      | Ast.Call("Print", [e]) ->
-	  let v, env = eval env e in
+      | (Ast.Call("Print", [e]), cenv) ->
+	  let (v, cenv), env = eval env (e, cenv) in
 	  print_endline v;
-	  "0", env
-      | Ast.Call(f, actuals) ->
+	  ("0", cenv), env
+      | (Ast.Call(f, actuals), cenv) ->
 	  let odecl =
 	    try NameMap.find f func_decls
 	    with Not_found -> raise (Failure ("undefined function " ^ f))
 	  in
 	  let actuals, env = List.fold_left
 	      (fun (actuals, env) actual ->
-		let v, env = eval env actual in v :: actuals, env)
+		let v, env = eval env (actual, cenv) in v :: actuals, env)
    	      ([], env) (List.rev actuals)
 	  in
 	  let (locals, globals) = env in
 	  try
 	    let globals = call odecl actuals globals
-	    in "0", (locals, globals)
-	  with ReturnException(v, globals) -> v, (locals, globals)
+	    in ("0", cenv), (locals, globals)
+	  with ReturnException(v, globals) -> (v, cenv), (locals, globals)
     in
 
     (* Execute a statement and return an updated environment *)
     let rec exec env = function
 	Ast.Block(stmts) -> List.fold_left exec env stmts
-      | Ast.Expr(e) -> let _, env = eval env e in env
+      | Ast.Expr(e) -> let _, env = eval env (e, ([],[])) in env
       | Ast.If(e, s1, s2) ->
-	  let v, env = eval env e in
+              let (v, cenv), env = eval env (e, ([],[])) in
 	  exec env (if int_of_string v != 0 then s1 else s2)
       | Ast.While(e, s) ->
 	  let rec loop env =
-	    let v, env = eval env e in
+          let (v, cenv), env = eval env (e, ([],[])) in
 	    if int_of_string v != 0 then loop (exec env s) else env
 	  in loop env
       | Ast.For(e1, e2, e3, s) ->
-	  let _, env = eval env e1 in
+              let (_, cenv), env = eval env (e1, ([],[])) in
 	  let rec loop env =
-	    let v, env = eval env e2 in
+          let (v, cenv), env = eval env (e2, ([],[])) in
 	    if int_of_string v != 0 then
-	      let _, env = eval (exec env s) e3 in
+            let (_, cenv), env = eval (exec env s) (e3, ([],[])) in
 	      loop env
 	    else
 	      env
 	  in loop env
       | Ast.Return(e) ->
-	  let v, (locals, globals) = eval env e in
+              let (v, cenv), (locals, globals) = eval env (e, ([],[])) in
 	  raise (ReturnException(v, globals))
       | Ast.Declare(o, v) -> 
               let (locals, globals) = env in 
@@ -228,7 +229,7 @@ let run (vars, funcs) =
     let locals =
       try List.fold_left2
 	  (fun locals formal actual -> NameMap.add formal actual locals)
-	  NameMap.empty odecl.oformals actuals
+      NameMap.empty odecl.oformals actuals
       with Invalid_argument(_) ->
 	raise (Failure ("wrong number of arguments passed to " ^ odecl.oname))
     in
@@ -240,12 +241,13 @@ let run (vars, funcs) =
     *)
     (* Execute each statement in sequence, return updated global symbol table *)
     snd (List.fold_left exec (locals, globals) odecl.obody)
-
+  
   (* Run a program: initialize global variables to 0, find and run "main" *)
+  in let g = ignore(print_endline "hi") 
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl "0" globals) NameMap.empty vars
   in try
-    call (NameMap.find "Main" func_decls) [] globals
+      call (NameMap.find "Main" func_decls) [] globals
   with Not_found -> raise (Failure ("did not find the main() function"))
 
 
@@ -261,7 +263,8 @@ let string_of_primitive primitive = match primitive with
 let _ =
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.program Scanner.token lexbuf in
-  run program (*in
+  run program 
+  (*in
   let (result, (cvars, cenv)), evars = exec (vars, objs) program in
 
   (* Append "return 0;" at the end of the main method *) 

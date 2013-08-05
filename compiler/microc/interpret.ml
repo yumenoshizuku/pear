@@ -129,5 +129,6 @@ let run (vars, funcs) =
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl "0" globals) NameMap.empty vars
   in try
-    call (NameMap.find "Main" func_decls) [] globals
+    call (NameMap.find "Main" func_decls) [] globals in
+  
   with Not_found -> raise (Failure ("did not find the main() function"))

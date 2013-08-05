@@ -57,6 +57,7 @@ let rec string_of_stmt = function
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | Declare(o, i) -> o ^ " " ^i
 
 let string_of_vdecl id =
     "[V]" ^ "int " ^ id ^ ";\n"

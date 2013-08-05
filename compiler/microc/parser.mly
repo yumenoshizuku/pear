@@ -41,15 +41,15 @@ formals_opt:
   | formal_list   { List.rev $1 }
 
 formal_list:
-    ID                   { [$1] }
-  | formal_list COMMA ID { $3 :: $1 }
+    OBJECT ID                   { [($1^" "^$2)] }
+  | formal_list COMMA OBJECT ID { ($3^" "^$4) :: $1 }
 
 /*vdecl_list:*/
     /* nothing */ /*   { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-   SEMI OBJECT ID COMMA { $2 }
+   OBJECT ID COMMA { $2 }
 */
 stmt_list:
     /* nothing */  { [] }

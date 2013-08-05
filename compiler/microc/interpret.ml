@@ -101,6 +101,11 @@ let run (vars, funcs) =
       | Return(e) ->
 	  let v, (locals, globals) = eval env e in
 	  raise (ReturnException(v, globals))
+      | Declare(o, v) -> 
+              let (locals, globals) = env in 
+              let var = ((NameMap.add (o ^ " " ^ v) "0" locals), globals) in 
+              var
+
     in
 
     (* Enter the function: bind actual values to formal arguments *)
@@ -124,5 +129,5 @@ let run (vars, funcs) =
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl "0" globals) NameMap.empty vars
   in try
-    call (NameMap.find "main" func_decls) [] globals
+    call (NameMap.find "Main" func_decls) [] globals
   with Not_found -> raise (Failure ("did not find the main() function"))

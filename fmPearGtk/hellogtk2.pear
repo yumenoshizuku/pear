@@ -1,0 +1,32 @@
+return
+(
+vim = "hi",
+var = 333,
+win = Window(),
+puts(22+7),
+puts(var+2),
+win.Title("some title"),
+win.WinPosition(center),
+puts('z'),
+fxfr=Fixed(),
+win.BorderWidth(20),
+win.WinSize(300 200),
+win.Resizable(yes),
+win.WinMove(80 120),
+win.Contain(fxfr),
+fr1 = Frame(),
+fr1.FrameLabel("first frame"),
+fr1.FrameShadow(etchedin),
+grd = Grid(),
+fxfr.Contain(grd),
+grd.InsertRow(1),
+grd.InsertColumn(1),
+grd.GridAttach(fr1 1 1 1 1),
+puts(vim+"ho")
+)
+
+(*,
+num = (2*7),
+puts(num+3)
+*)
+

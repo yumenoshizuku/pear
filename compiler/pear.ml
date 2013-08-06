@@ -183,7 +183,7 @@ let run (vars, funcs) =
 	  in
 	  let actuals, env = List.fold_left
 	      (fun (actuals, env) actual ->
-		let v, env = eval env (actual, cenv) in v :: actuals, env)
+		let (v, cenv), env = eval env (actual, cenv) in v :: actuals, env)
    	      ([], env) (List.rev actuals)
 	  in
 	  let (locals, globals) = env in
@@ -196,7 +196,7 @@ let run (vars, funcs) =
     (* Execute a statement and return an updated environment *)
     let rec exec env = function
 	Ast.Block(stmts) -> List.fold_left exec env stmts
-      | Ast.Expr(e) -> let _, env = eval env (e, ([],[])) in env
+      | Ast.Expr(e) -> let (_, cenv), env = eval env (e, ([],[])) in env
       | Ast.If(e, s1, s2) ->
               let (v, cenv), env = eval env (e, ([],[])) in
 	  exec env (if int_of_string v != 0 then s1 else s2)
@@ -240,7 +240,7 @@ let run (vars, funcs) =
     in
     *)
     (* Execute each statement in sequence, return updated global symbol table *)
-    snd (List.fold_left exec (locals, globals) odecl.obody)
+    snd (List.fold_left exec (locals,globals) odecl.obody)
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
   in let g = ignore(print_endline "hi") 
@@ -290,3 +290,7 @@ let _ =
                     ( "#include <stdio.h>\n" ^
                       "#include <gtk/gtk.h>\n" ^ listing  )
 *)
+(*
+let v1 : (string NameMap.t * string NameMap.t) -> string * (func_decl list * var_decl list) -> (string * (func_decl list * var_decl list)) * (string NameMap.t * string NameMap.t) =
+    fun (nmv,nmf) (x, (y,z)) -> "a", ([],[]),(NameMap.empty v, NameMap.empty
+    w)*)

@@ -137,7 +137,8 @@ let run (vars, funcs) =
   let rec call odecl actuals globals =
 
     (* Evaluate an expression and return (value, updated environment) *)
-    let rec eval env = function
+    let rec eval env : (Ast.expr * (string NameMap.t * string NameMap.t)) ->
+        (string * (string NameMap.t * string NameMap.t)) * (string NameMap.t * string NameMap.t) = function
 	(Ast.Literal(i), cenv) -> (string_of_int i, cenv), env
       | (Ast.StrLit(i), cenv) -> (i, cenv), env
       | (Ast.Char(i), cenv) -> (String.make 1 i, cenv), env
@@ -194,7 +195,7 @@ let run (vars, funcs) =
     in
 
     (* Execute a statement and return an updated environment *)
-    let rec exec env = function
+    let rec exec env : Ast.stmt -> string NameMap.t * string NameMap.t = function
 	Ast.Block(stmts) -> List.fold_left exec env stmts
       | Ast.Expr(e) -> let (_, cenv), env = eval env (e, ([],[])) in env
       | Ast.If(e, s1, s2) ->

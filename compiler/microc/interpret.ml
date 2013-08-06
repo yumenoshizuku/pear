@@ -21,7 +21,7 @@ let run (vars, funcs) =
   let rec call fdecl actuals globals =
 
     (* Evaluate an expression and return (value, updated environment) *)
-    let rec eval env = function
+    let rec eval env : Ast.expr -> string * (string NameMap.t * string NameMap.t) = function
 	Literal(i) -> string_of_int i, env
       | StrLit(i) -> i, env
       | Char(i) -> String.make 1 i, env
@@ -77,7 +77,7 @@ let run (vars, funcs) =
     in
 
     (* Execute a statement and return an updated environment *)
-    let rec exec env = function
+    let rec exec env : Ast.stmt -> string NameMap.t * string NameMap.t = function
 	Block(stmts) -> List.fold_left exec env stmts
       | Expr(e) -> let _, env = eval env e in env
       | If(e, s1, s2) ->

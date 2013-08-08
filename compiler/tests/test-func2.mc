@@ -1,6 +1,6 @@
-(* Bug noticed by Pin-Chin Huang *)
+/* Bug noticed by Pin-Chin Huang */
 
-fun(int x, int y)
+fun(x, y)
 {
   print(i);
   return (0+0);
@@ -12,7 +12,6 @@ main()
   i = 1;
 
   fun(i = 2, i = i+1);
-
   print(i);
 }
 

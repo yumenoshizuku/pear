@@ -178,7 +178,7 @@ let run (vars, funcs) =
 	  else if NameMap.mem var globals then
 	    (v, cenv), (locals, NameMap.add var v globals)
 	  else raise (Failure ("undeclared identifier " ^ var))
-      | (Ast.Call("Print", [e]), cenv) ->
+      | (Ast.Call("print", [e]), cenv) ->
 	  let (v, cenv), env = eval env (e, cenv) in
 	  print_endline v;
 	  ("0", cenv), env
@@ -252,7 +252,7 @@ let run (vars, funcs) =
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl "0" globals) NameMap.empty vars
   in try
-      call (NameMap.find "Main" func_decls) [] globals
+      call (NameMap.find "main" func_decls) [] globals
   with Not_found -> raise (Failure ("did not find the main() function"))
 
 

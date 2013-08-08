@@ -1,9 +1,6 @@
 gcd(a, b) {
 
   while (a != b) {
-print(a);
-print(b);
-print(0);
     if (a > b) a = a - b;
     else b = b - a;
   }

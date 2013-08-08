@@ -122,7 +122,7 @@ let run (vars, objs) =
           (match v with
             Int(x) -> print_endline (string_of_int x)
           | String(x) -> print_endline x
-          | _ -> () );
+          | Char(x) -> print_endline (String.make 1 x));
 	  ((Int 0), cenv), env
       | (Ast.Call(f, actuals), cenv) ->
 	  let odecl =

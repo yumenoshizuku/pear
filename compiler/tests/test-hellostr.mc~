@@ -1,0 +1,7 @@
+main()
+{
+  print("Hello world!");
+  print("hi");
+  print(71);
+  print(1);
+}

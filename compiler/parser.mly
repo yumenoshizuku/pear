@@ -8,6 +8,7 @@
 %token <string> STRLIT
 %token <char> CHAR
 %token <string> ID
+%token <string> OBJECT
 %token EOF
 
 %nonassoc NOELSE
@@ -32,7 +33,7 @@ fdecl:
    ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
      { { oname = $1;
 	 oformals = $3;
-	 (*locals = List.rev $6;*)
+	 olocals = List.rev $6;
 	 obody = List.rev $7 } }
 
 formals_opt:
@@ -48,7 +49,9 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-   INT ID SEMI { $2 }
+    INT ID SEMI 
+      { $2
+        }
 
 stmt_list:
     /* nothing */  { [] }

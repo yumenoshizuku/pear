@@ -24,22 +24,26 @@ type stmt =
 
 
 (* Variable declaration *)
+  (*
 type var_decl = {
   varType : string;
   vname : string;
 }
+*)
 
 (* Function declaration *)
 type obj_decl = {
   oname : string;
   oformals : string list;
-  (*locals : var_decl list;*)
+  olocals : string list;
   obody : stmt list;
 }
 
 type program = string list * obj_decl list
 
 (* Formals carry both their types and their values *)
+(*
 type formal =
     FormalType of string
     | FormalVar of expr
+    *)

@@ -7,12 +7,11 @@ fun(x, y)
 
 main()
 {
-  int i;
+  Int i;
   i = 1;
 
   fun(i = 2, i = i+1);
 
   print(i);
-
 }
 

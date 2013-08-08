@@ -3,7 +3,7 @@
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR WHILE INT
+%token RETURN IF ELSE FOR WHILE INT BINT
 %token <int> LITERAL
 %token <string> STRLIT
 %token <char> CHAR
@@ -49,7 +49,7 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    INT ID SEMI 
+    OBJECT ID SEMI 
       { $2
         }
 

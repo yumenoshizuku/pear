@@ -1,6 +1,6 @@
 main()
 {
-  int i;
+  Int i;
   i = 5;
   while (i > 0) {
     print(i);

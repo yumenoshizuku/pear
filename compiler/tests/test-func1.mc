@@ -5,7 +5,7 @@ add(a, b)
 
 main()
 {
-  int a;
+  Int a;
   a = add(39, 3);
   print(a);
 }

@@ -1,5 +1,5 @@
-int a;
-int b;
+Int a;
+Int b;
 
 printa()
 {

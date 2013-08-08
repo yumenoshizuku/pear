@@ -66,7 +66,7 @@ type program =
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
-  | StringLit(s) -> s 
+  | StringLit(s) -> "\"" ^ s ^ "\"" 
   | Null -> "NULL" 
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^

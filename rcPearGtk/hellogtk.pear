@@ -1,17 +1,13 @@
 return
 (
-vim = "hi",
-var = 333,
 win = Window(),
-label = win.Label(""),
-puts(22+7),
-puts(var+2),
-puts('z'),
-puts(vim+"ho")
+label = win.Label(""; 190; 58),
+label.getText(),
+label.setText("label1"),
+label2 = win.Label ("label2"; 220; 78),
+label2.setText(label.getText()),
+button = win.Button("button1"; 100; 30),
+button2 = win.Button("button2"; 10; 10),
+button.click(label2.setText("button1 clicked"), button2.click(label2.setText("button2 clicked")))
 )
-
-(*,
-num = (2*7),
-puts(num+3)
-*)
 

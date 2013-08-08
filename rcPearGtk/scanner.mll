@@ -12,8 +12,12 @@ rule token = parse
    | '.'      { DOT }
    | "puts"   { PUTS }    | "return" { RETURN }
    | eof      { EOF }
+   | ';'      { SEMI }
    | "Window" { WINDOW }
-   | "Label"  { LABEL }
+   | "getText" as lit { GETPTY (lit) }
+   | "setText" as lit { SETPTY (lit) }
+   | "Label" | "Button" as lit { CREATE (lit) }
+   | "click" as lit { ACTION (lit) }
    | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
    | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as var { VARIABLE(var) }
    | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']*'"' as strlit  

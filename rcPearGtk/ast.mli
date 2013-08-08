@@ -10,9 +10,14 @@ type expr =
     | Asn of string * expr
     | Puts of expr
     | Window of string
-    | CreateLabel of string * string * string (* label variable name, window variable name and label initial text *) 
+    (* variable name, container (window) variable name, widget type and argument list *)
+    | Create of string * string * string * expr list  
+    | GetPty of string * string (* var name, property name*)
+    | SetPty of string * string * expr list
+    (* expr(variable or getPty), action type, callback function *)
+    | Action of string * string * expr 
 
 type stmt =
     Expr of expr
-    | Return of expr
+    | Return of expr   
 

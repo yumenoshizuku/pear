@@ -26,11 +26,11 @@
 
 program:
    /* nothing */ { [], [] }
- | program OBJECT ID COMMA { (($2^" "^$3) :: fst $1), snd $1 }
- | program fdecl COMMA { fst $1, ($2 :: snd $1) }
+ | program vdecl { ($2 :: fst $1), snd $1 }
+ | program fdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   OBJECT LPAREN formals_opt RPAREN LPAREN stmt_list RPAREN
+   OBJECT LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE
      { { oname = $1;
 	 oformals = $3;
 	 (*locals = List.rev $6;*)
@@ -42,29 +42,29 @@ formals_opt:
 
 formal_list:
     OBJECT ID                   { [($1^" "^$2)] }
-  | formal_list COMMA OBJECT ID { ($3^" "^$4) :: $1 }
+  | formal_list SEMI OBJECT ID { ($3^" "^$4) :: $1 }
 
 /*vdecl_list:*/
     /* nothing */ /*   { [] }
   | vdecl_list vdecl { $2 :: $1 }
-
-vdecl:
-   OBJECT ID COMMA { $2 }
 */
+vdecl:
+   OBJECT ID SEMI { $1^$2 }
+
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    expr COMMA { Expr($1) }
-  | RETURN expr COMMA { Return($2) }
+    expr SEMI { Expr($1) }
+  | RETURN expr SEMI { Return($2) }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
   | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
-  | OBJECT ID COMMA { Declare($1, $2) }
+  | OBJECT ID SEMI { Declare($1, $2) }
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -95,4 +95,4 @@ actuals_opt:
 
 actuals_list:
     expr                    { [$1] }
-  | actuals_list COMMA expr { $3 :: $1 }
+  | actuals_list SEMI expr { $3 :: $1 }

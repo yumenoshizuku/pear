@@ -8,6 +8,9 @@ rule token = parse
 | "(*"     { comment lexbuf }           (* Comments *)
 | '('      { LPAREN }
 | ')'      { RPAREN }
+(*remove*)
+| '{'      { LBRACE }
+| '}'      { RBRACE }
 | ','      { COMMA }
 | '+'      { PLUS }
 | '-'      { MINUS }
@@ -26,10 +29,13 @@ rule token = parse
 | "while"  { WHILE }
 | "return" { RETURN }
 | "int"    { INT }
+(*remove*)
+| ';'      { SEMI }
 | ['0'-'9']+ as lxm { LITERAL(int_of_string lxm) }
-| '"'[^ '"']+'"' as lxm {
+(* Fix regex *)
+| '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']+'"' as lxm {
     STRLIT(String.sub lxm 1 (String.length lxm - 2)) }
-| '''[^ ''']''' as charlit  {
+| '''['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']''' as charlit  {
        CHAR(charlit.[1]) }
 | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as obj { OBJECT(obj) } 
 | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }

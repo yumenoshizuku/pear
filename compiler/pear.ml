@@ -113,7 +113,10 @@ let rec exec env = function
 *)
 
 
-
+type primitive =
+    Int of int
+    | String of string
+    | Char of char
 
 
 
@@ -139,6 +142,7 @@ let run (vars, funcs) =
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env : (Ast.expr * (var_decl list * func_decl list)) ->
         (string * (var_decl list * func_decl list)) * (string NameMap.t * string NameMap.t) = function
+
 	(Ast.Literal(i), cenv) -> (string_of_int i, cenv), env
       | (Ast.StrLit(i), cenv) -> (i, cenv), env
       | (Ast.Char(i), cenv) -> (String.make 1 i, cenv), env
@@ -167,7 +171,8 @@ let run (vars, funcs) =
 	  | Ast.Geq -> boolean (v1 >= v2)), cenv), env
       | (Ast.Assign(var, e), cenv) ->
 	  let (v, cenv), (locals, globals) = eval env (e, cenv) in
-      print_endline v;
+      (*print_endline v;*)
+      
 	  if NameMap.mem var locals then
 	    (v, cenv), (NameMap.add var v locals, globals)
 	  else if NameMap.mem var globals then
@@ -221,7 +226,7 @@ let run (vars, funcs) =
 	  raise (ReturnException(v, globals))
       | Ast.Declare(o, v) -> 
               let (locals, globals) = env in 
-              let var = ((NameMap.add (o ^ " " ^ v) "0" locals), globals) in 
+              let var = ((NameMap.add v "0" locals), globals) in 
               var
 
     in
@@ -244,7 +249,6 @@ let run (vars, funcs) =
     snd (List.fold_left exec (locals,globals) odecl.obody)
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
-  in let g = ignore(print_endline "hi") 
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl "0" globals) NameMap.empty vars
   in try

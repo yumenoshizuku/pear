@@ -120,8 +120,8 @@ let run (vars, objs) =
       | (Ast.Call("print", [e]), cenv) ->
 	  let (v, cenv), env = eval env (e, cenv) in
           (match v with
-          String(x) ->
-	  print_endline x
+            Int(x) -> print_endline (string_of_int x)
+          | String(x) -> print_endline x
           | _ -> () );
 	  ((Int 0), cenv), env
       | (Ast.Call(f, actuals), cenv) ->

@@ -2,8 +2,7 @@
 
 fun(x, y)
 {
-  print(i);
-  return (0+0);
+  return 0;
 }
 
 main()
@@ -12,6 +11,8 @@ main()
   i = 1;
 
   fun(i = 2, i = i+1);
+
   print(i);
+
 }
 

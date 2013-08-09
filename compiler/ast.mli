@@ -40,10 +40,3 @@ type obj_decl = {
 }
 
 type program = string list * obj_decl list
-
-(* Formals carry both their types and their values *)
-(*
-type formal =
-    FormalType of string
-    | FormalVar of expr
-    *)

@@ -1,8 +1,8 @@
-main()
+Main()
 {
-  Puts("Hello world!");
-  Puts("hi");
-  Puts('a');
-  Puts(71);
-  Puts(1);
+  print("Hello world!");
+  print("hi");
+  print('a');
+  print(71);
+  print(1);
 }

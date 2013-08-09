@@ -1,19 +1,17 @@
 /* Bug noticed by Pin-Chin Huang */
 
-fun(x, y)
+Fun(x, y)
 {
   return 0;
 }
 
-main()
+Main()
 {
   Int i;
-/*
   i = 1;
 
   fun(i = 2, i = i+1);
 
   print(i);
-*/
 }
 

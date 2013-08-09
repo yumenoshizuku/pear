@@ -94,7 +94,7 @@ let run (vars, objs) =
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("print", [e]), cenv) ->
-              print_string "print";
+             (* print_string "print";*)
 	  let (v, cenv), env = eval env (e, cenv) in
           (match v with
              Int(x) -> print_endline (string_of_int x)
@@ -102,7 +102,7 @@ let run (vars, objs) =
            | Char(x) -> print_endline (String.make 1 x));
 	   ((Int 0), cenv), env
       | (Ast.Call(f, actuals), cenv) ->
-          print_string "call";
+          (*print_string "call";*)
 	  let odecl =
 	    try NameMap.find f obj_decls
 	    with Not_found -> raise (Failure ("undefined function " ^ f))
@@ -194,7 +194,7 @@ let run (vars, objs) =
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
       let env, cenv = call (NameMap.find "main" obj_decls) [] globals in
-      print_int (List.length (snd cenv));
+      (*print_int (List.length (snd cenv));*)
     let cvdecls, cfdecls = cenv in
     let lfdecl = List.hd (List.rev cfdecls) in
     let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =

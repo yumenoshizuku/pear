@@ -21,14 +21,7 @@ module StringMap = Map.Make(struct
 let vars = StringMap.empty
 let objs = StringMap.empty
 
-(* Create the main method *)
-let new_cenv = {
-  returnType = "int";
-  fname = "main";
-  formals = [];
-  locals = [];
-  body = [];
-}
+
 
 (* The primitive types *)
 type primitive =
@@ -101,6 +94,7 @@ let run (vars, objs) =
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("print", [e]), cenv) ->
+              print_string "print";
 	  let (v, cenv), env = eval env (e, cenv) in
           (match v with
              Int(x) -> print_endline (string_of_int x)
@@ -108,6 +102,7 @@ let run (vars, objs) =
            | Char(x) -> print_endline (String.make 1 x));
 	   ((Int 0), cenv), env
       | (Ast.Call(f, actuals), cenv) ->
+          print_string "call";
 	  let odecl =
 	    try NameMap.find f obj_decls
 	    with Not_found -> raise (Failure ("undefined function " ^ f))
@@ -129,9 +124,9 @@ let run (vars, objs) =
     let rec exec (env, cenv) : Ast.stmt -> ( (primitive NameMap.t * primitive
     NameMap.t) * (Cast.var_decl list * Cast.func_decl list)) = function
 	Ast.Block(stmts) -> List.fold_left exec (env, cenv) stmts
-      | Ast.Expr(e) -> let (_, cenv), env = eval env (e, ([],[])) in (env, cenv)
+      | Ast.Expr(e) -> let (_, cenv), env = eval env (e, cenv) in (env, cenv)
       | Ast.If(e, s1, s2) ->
-          let (v, cenv), env = eval env (e, ([],[])) in
+          let (v, cenv), env = eval env (e, cenv) in
             (match v with
               Int(x) ->
 	          exec (env, cenv) (if x != 0 then s1 else s2)
@@ -139,7 +134,7 @@ let run (vars, objs) =
             statement.")))
       | Ast.While(e, s) ->
 	  let rec loop (env, cenv) =
-          let (v, cenv), env = eval env (e, ([],[])) in
+          let (v, cenv), env = eval env (e, cenv) in
             (match v with
                Int(x) ->
 	           if x != 0 then loop (exec (env, cenv) s) else env
@@ -147,20 +142,20 @@ let run (vars, objs) =
              statement.")) )
           in (loop (env, cenv), cenv)
       | Ast.For(e1, e2, e3, s) ->
-              let _, env = eval env (e1, ([],[])) in
+              let _, env = eval env (e1, cenv) in
 	  let rec loop env =
-          let (v, cenv), env = eval env (e2, ([],[])) in
+          let (v, cenv), env = eval env (e2, cenv) in
             (match v with
             Int(x) ->
 	    if x != 0 then
-            let (_, cenv), env = eval (fst(exec (env, cenv) s)) (e3, ([],[])) in
+            let (_, cenv), env = eval (fst(exec (env, cenv) s)) (e3, cenv) in
 	      loop (env)
 	    else
 	      env
             | _ -> raise (Failure ("Error: invalid operation on a for statement.")))
 	  in (loop env, cenv)
       | Ast.Return(e) ->
-              let (v, cenv), (locals, globals) = eval env (e, ([],[])) in
+              let (v, cenv), (locals, globals) = eval env (e, cenv) in
 	  raise (ReturnException(v, globals))
       | Ast.Declare(o, v) -> 
               let (locals, globals) = env in 
@@ -181,6 +176,14 @@ let run (vars, objs) =
     let locals = List.fold_left
 	(fun locals local -> NameMap.add local (Int 0) locals) locals odecl.olocals
     in
+    (* Create the main method *)
+    let new_cenv = {
+        returnType = "int";
+        fname = "main";
+        formals = [];
+        locals = [];
+        body = [];
+    } in
     (* Execute each statement in sequence, return updated global symbol table *)
     let env, cenv = (List.fold_left exec ((locals,globals), ([], [new_cenv]))
     odecl.obody) in
@@ -191,8 +194,7 @@ let run (vars, objs) =
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
       let env, cenv = call (NameMap.find "main" obj_decls) [] globals in
-
-      (*
+      print_int (List.length (snd cenv));
     let cvdecls, cfdecls = cenv in
     let lfdecl = List.hd (List.rev cfdecls) in
     let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
@@ -215,8 +217,6 @@ let run (vars, objs) =
     fprintf oc "%s\n" (* Append preprocessor *)
                     ( "#include <stdio.h>\n" ^
                       "#include <gtk/gtk.h>\n" ^ listing ); 
-                      *)
-      env
   with Not_found -> raise (Failure ("did not find the main() function"))
 
 

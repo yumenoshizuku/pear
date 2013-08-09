@@ -95,12 +95,42 @@ let run (vars, objs) =
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("print", [e]), cenv) ->
              (* print_string "print";*)
-	  let (v, cenv), env = eval env (e, cenv) in
+	  let (v, (cvars, cfuncs)), env = eval env (e, cenv) in
+          (* Get main method (last function declaration) *)
+          let lfdecl = List.hd (List.rev cfuncs) in
+          (* Create new function declaration with same args but a new body *)
+          let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
+            lfdecl.locals; body = (
+              (* Create the call to printf *)
+              let print = 
+                ( match v with
+                    (* Match parameter with result *)
+                    Int(x) -> 
+                      Cast.Expr (Call("printf", [Cast.StrLit "\"%d\\n\""; Cast.Literal x]))
+                  | String(x) -> 
+                      Cast.Expr (Call("printf", [Cast.StrLit "\"%s\\n\""; Cast.StrLit ("\"" ^ x ^ "\"")]))
+                  | Char(x) -> 
+                      Cast.Expr (Call("printf", [Cast.StrLit "\"%c\\n\""; Cast.StrLit ("'" ^ (String.make 1 x) ^ "'")])) ) in
+                (* Append to the end of the body *)
+                match lfdecl.body with
+                  []  ->     [print]
+                | [x] ->  x::[print]
+                | x   -> x @ [print] 
+          ) } in
+         (* Create new environment with the new main method *)
+         let ncenv = 
+           ( match cfuncs with
+               []  ->     []
+             | [x] -> [nfdecl]
+             | x   -> x @ [nfdecl]) in 
+
+          (* Interpret *)
           (match v with
              Int(x) -> print_endline (string_of_int x)
            | String(x) -> print_endline x
            | Char(x) -> print_endline (String.make 1 x));
-	   ((Int 0), cenv), env
+           (* Return the new environment *)
+	   ((Int 0), (cvars, ncenv)), env
       | (Ast.Call(f, actuals), cenv) ->
           (*print_string "call";*)
 	  let odecl =

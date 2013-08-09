@@ -5,6 +5,9 @@
 **
 ** Website:
 ** https://github.com/gy3h/pear
+**
+** Adapted from the MicroC interpreter:
+** http://www.cs.columbia.edu/~sedwards/classes/2013/w4115-summer2/microc.tar.gz
 *)
 
 open Ast
@@ -19,21 +22,19 @@ let vars = StringMap.empty
 let objs = StringMap.empty
 
 (* Create the main method *)
-let cenv = {
-   returnType = "int";
-   fname = "main";
-   formals = [];
-   locals = [];
-   body = [];
+let new_env = {
+  returnType = "int";
+  fname = "main";
+  formals = [];
+  locals = [];
+  body = [];
 }
 
-
-
+(* The primitive types *)
 type primitive =
     Int of int
-    | String of string
-    | Char of char
-
+  | String of string
+  | Char of char
 
 
 module NameMap = Map.Make(struct
@@ -43,9 +44,10 @@ end)
 
 exception ReturnException of primitive * primitive NameMap.t
 
-(* Main entry point: run a program *)
 
+(* Main entry point: run a program *)
 let run (vars, objs) =
+
   (* Put function declarations in a symbol table *)
   let obj_decls = List.fold_left
       (fun objs odecl -> NameMap.add odecl.oname odecl objs)
@@ -73,57 +75,38 @@ let run (vars, objs) =
       | (Ast.Binop(e1, op, e2), cenv) ->
 	  let (v1, cenv), env = eval env (e1, cenv) in
           let (v2, cenv), env = eval env (e2, cenv) in
-          (*
-((match v1, v2 with
-            (* Define binary operators based on types *)
-            Int(x1), Int(x2) ->
-            Int (match op with
-                   Ast.Add -> x1 + x2
-                 | Ast.Sub -> x1 - x2
-                 | Ast.Mul -> x1 * x2
-                 | Ast.Div -> x1 / x2)
-         |  String(x1), String(x2) ->
-            String (match op with
-                   Ast.Add -> x1 ^ x2
-                 | _ -> raise (Failure 
-                     ("Error: Invalid string operation.")))
-         | _ -> raise (Failure 
-                     ("Error: Invalid operation.")) 
-        ), cenv), vars
-*)
 	  let boolean i = if i then 1 else 0 in
-          (match v1, v2 with
-          Int(x1), Int(x2) ->
-	  (Int (match op with
-	    Ast.Add -> x1 + x2
-	  | Ast.Sub -> x1 - x2
-	  | Ast.Mul -> x1 * x2
-	  | Ast.Div -> x1 / x2
-	  | Ast.Equal -> boolean (x1 = x2)
-	  | Ast.Neq -> boolean (x1 != x2)
-	  | Ast.Less -> boolean (x1 < x2)
-	  | Ast.Leq -> boolean (x1 <= x2)
-	  | Ast.Greater -> boolean (x1 > x2)
-	  | Ast.Geq -> boolean (x1 >= x2)), cenv)
-          | _ -> raise (Failure("Error: invalid operation on a binary expression."))), env
+            (match v1, v2 with
+               Int(x1), Int(x2) ->
+	         (Int (match op with
+	                 Ast.Add -> x1 + x2
+	               | Ast.Sub -> x1 - x2
+	               | Ast.Mul -> x1 * x2
+	               | Ast.Div -> x1 / x2
+	               | Ast.Equal -> boolean (x1 = x2)
+	               | Ast.Neq -> boolean (x1 != x2)
+	               | Ast.Less -> boolean (x1 < x2)
+	               | Ast.Leq -> boolean (x1 <= x2)
+         	       | Ast.Greater -> boolean (x1 > x2)
+	               | Ast.Geq -> boolean (x1 >= x2)), cenv)
+             | _ -> raise (Failure("Error: invalid operation on a binary expression."))), env
       | (Ast.Assign(var, e), cenv) ->
 	  let (v, cenv), (locals, globals) = eval env (e, cenv) in
-      (*print_endline var;*)
-       (match v with
-       Int(x) ->
-	  if NameMap.mem var locals then
-	    (Int x, cenv), (NameMap.add var v locals, globals)
-	  else if NameMap.mem var globals then
-	    (Int x, cenv), (locals, NameMap.add var v globals)
-	  else raise (Failure ("undeclared identifier " ^ var))
-      | _ -> raise (Failure ("Error: Cannot assign type")))
+            (match v with
+               Int(x) ->
+	         if NameMap.mem var locals then
+	           (Int x, cenv), (NameMap.add var v locals, globals)
+	         else if NameMap.mem var globals then
+	           (Int x, cenv), (locals, NameMap.add var v globals)
+	         else raise (Failure ("undeclared identifier " ^ var))
+             | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("print", [e]), cenv) ->
 	  let (v, cenv), env = eval env (e, cenv) in
           (match v with
-            Int(x) -> print_endline (string_of_int x)
-          | String(x) -> print_endline x
-          | Char(x) -> print_endline (String.make 1 x));
-	  ((Int 0), cenv), env
+             Int(x) -> print_endline (string_of_int x)
+           | String(x) -> print_endline x
+           | Char(x) -> print_endline (String.make 1 x));
+	   ((Int 0), cenv), env
       | (Ast.Call(f, actuals), cenv) ->
 	  let odecl =
 	    try NameMap.find f obj_decls
@@ -142,14 +125,15 @@ let run (vars, objs) =
     in
 
     (* Execute a statement and return an updated environment *)
-    let rec exec env : Ast.stmt -> primitive NameMap.t * primitive NameMap.t = function
-	Ast.Block(stmts) -> List.fold_left exec env stmts
-      | Ast.Expr(e) -> let (_, cenv), env = eval env (e, ([],[])) in env
+    let rec exec (env, cenv) : Ast.stmt -> ( (primitive NameMap.t * primitive
+    NameMap.t) * (var_decl list * obj_decl list)) = function
+	Ast.Block(stmts) -> List.fold_left exec (env, cenv) stmts
+      | Ast.Expr(e) -> let (_, cenv), env = eval env (e, ([],[])) in (env, cenv)
       | Ast.If(e, s1, s2) ->
           let (v, cenv), env = eval env (e, ([],[])) in
             (match v with
               Int(x) ->
-	          exec env (if x != 0 then s1 else s2)
+	          exec (env, cenv) (if x != 0 then s1 else s2)
             | _ -> raise (Failure ("Error: invalid operation on a conditional
             statement.")))
       | Ast.While(e, s) ->
@@ -157,7 +141,7 @@ let run (vars, objs) =
           let (v, cenv), env = eval env (e, ([],[])) in
             (match v with
                Int(x) ->
-	           if x != 0 then loop (exec env s) else env
+	           if x != 0 then loop (fst(exec (env, cenv) s)) else (env, cenv)
              | _ -> raise (Failure ("Error: invalid operation on a while
              statement.")) )
           in loop env
@@ -168,21 +152,19 @@ let run (vars, objs) =
             (match v with
             Int(x) ->
 	    if x != 0 then
-            let (_, cenv), env = eval (exec env s) (e3, ([],[])) in
-	      loop env
+            let (_, cenv), env = eval (fst(exec (env, cenv) s)) (e3, ([],[])) in
+	      loop (env)
 	    else
-	      env
+	      (env, cenv)
             | _ -> raise (Failure ("Error: invalid operation on a for statement.")))
 	  in loop env
       | Ast.Return(e) ->
               let (v, cenv), (locals, globals) = eval env (e, ([],[])) in
 	  raise (ReturnException(v, globals))
       | Ast.Declare(o, v) -> 
-              (*fix*)
               let (locals, globals) = env in 
-              
               let var = ((NameMap.add v (Int 0) locals), globals) in 
-              var
+              (var, cenv)
 
     in
 
@@ -199,7 +181,7 @@ let run (vars, objs) =
 	(fun locals local -> NameMap.add local (Int 0) locals) locals odecl.olocals
     in
     (* Execute each statement in sequence, return updated global symbol table *)
-    snd (List.fold_left exec (locals,globals) odecl.obody)
+    snd (List.fold_left (fst(exec ((locals,globals), ([], [new_cenv])) )) odecl.obody)
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
   in let globals = List.fold_left

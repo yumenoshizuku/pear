@@ -1,6 +1,7 @@
 open Ast
 open Cast
 open Printf
+open Util
 
 module StringMap = Map.Make(struct
   type t = string
@@ -18,15 +19,11 @@ let string_of_primitive primitive = match primitive with
  | String(x) -> x
  | Char(x) -> String.make 1 x
 
-let idSeq=0
-
-let string_of_nextId varId = 
-   let varId= varId + 1 in 
-   string_of_int varId 
-   
+(* To name the frame associated with window *)   
 let getFrameNameFromWindowName windowName=
    windowName ^ "Frame" 
-   
+
+(* find type of gtk variable in symbol table *)   
 let getGtkTypeOrFail variableName env= 
    if not (StringMap.mem variableName env) then
  	  raise (Failure ("Error: undefined variable " ^ variableName))
@@ -55,6 +52,7 @@ let rec append_to_list toAppend= function
   | [x] ->  x::toAppend
   | x   -> x @ toAppend  
 
+
 let gtkNameOfType vType = match vType with
      "Label" -> "GTK_LABEL"
    | _ -> raise (Failure ("Error: unknown gtk type " ^ vType))   
@@ -64,8 +62,8 @@ let stirng_of_getPtyExpr variable methodType =
  
 
 (* arguments: variable, property type, env, cFuns *)
-(* returns: return type ("Text", "Numeric", or widget type), C expr list, newCEnv *)
-(* if the getter is get a widget in a container, we define a function to get the widget, 
+(* returns: return type ("Text", "Numeric", or widget type), C expr list (looks it is always one expr), newCEnv *)
+(* Note that we need update cenv when the getter is get a widget in a container, we define a function to get the widget, 
 and the C expr list calls this function *)
 let getPtyCExpr variable methodType env cenv= 
    let vType = getGtkTypeOrFail variable env in
@@ -80,7 +78,10 @@ let getPtyCExpr variable methodType env cenv=
                         ])]
       in "Text", exprs, cenv
     | _ as unknown -> raise (Failure ("Error: unknown get property method " ^ unknown))
- 
+
+(* input varaible, propert type, initialValueList, env, cenv *) 
+(* returns cexpr list (always one expr), cenv *)
+(* cenv is updated when the initial value expr is getPty expr which updates cenv*)
 let setPtyCExpr variable methodType valueList env cenv= 
   let vType = getGtkTypeOrFail variable env in
   match methodType with
@@ -108,7 +109,8 @@ let setPtyCExpr variable methodType valueList env cenv=
       in exprList, cenv
    | _ as unknown -> raise (Failure ("Error: unknown set property method " ^ unknown))  
 
-(* create expression for common argument list for creating a widget: initial text, initial x postion, initial y position. Returns three expression lists *)
+(* create expression for common argument list for creating a widget: 
+initial text, initial x postion, initial y position. Returns three expression lists *)
 let getCExprOfTextAndInitPosition argsList env cenv= 
     let arg1CExprList =
       match List.hd argsList with 
@@ -141,7 +143,8 @@ let getCExprOfTextAndInitPosition argsList env cenv=
         | _ -> raise (Failure ("Error in create widget argument"))
     in arg1CExprList, arg2CExprList, arg3CExprList, cenv           
 
-(* returns variable declarations, statements, new env *)
+(* returns variable declarations, expr list, new env *)
+(* env will always updates *)
 let createCSyntax variable containerVar widgetType valueList env =
   if StringMap.mem variable env then
  		 raise (Failure ("Error: Duplicate variable " ^ variable))
@@ -178,25 +181,34 @@ let createCSyntax variable containerVar widgetType valueList env =
        in vdeclExpr, exprList, (StringMap.add variable (String "Button") env)       
    | _ as unknown -> raise (Failure ("Error: unknown widget type " ^ unknown)) 
 
-(* input function name, existing c fun list *)
-let rec getCallbackFunRecord funName= function 
-  [] -> {
+(* create a new C fun record according to the given name. if there is already a function with the same name, 
+create a new one *)
+(* input: function name to match, longest matched function name, existing c fun list *)
+let rec getCallbackFunRecord funName longestMatchedItem= function 
+  [] -> 
+  let finalName= if longestMatchedItem = "" then funName
+                 else longestMatchedItem ^ "New" in
+   {
    returnType = Cast.BasicType (Cast.Void);
-   fname = funName;
+   fname = finalName;
    formals = [Cast.FormalDecl (Cast.PointerType (Cast.GtkWidget), "widget");
    Cast.FormalDecl (Cast.BasicType (Cast.GPointer), "data")];
    locals = [];
    body = [];
    } 
   | hd::tl ->
-    if hd.fname = funName then
-       let hd ={ returnType = hd.returnType; fname = hd.fname; formals = hd.formals; 
-             locals=[] ; body= [] } in
-       hd
+    let longestMatchedItem =
+    if String.length hd.fname >= String.length funName && String.sub hd.fname 0 (String.length funName) = funName then
+       if String.length hd.fname >= String.length longestMatchedItem then
+          hd.fname
+       else
+          longestMatchedItem   
     else
-      getCallbackFunRecord funName tl  
+      longestMatchedItem
+    in  
+      getCallbackFunRecord funName longestMatchedItem tl  
 
-(* input updated function, passed funs in list, remaining funs in list *)      
+(* input: updated function, passed funs in list, remaining funs in list *)      
 let rec updateCFuns updatedFun passedFuns =function
     [] -> raise (Failure ("Error: pear.ml has bug in updated C functions "))
   | hd :: tl ->
@@ -205,30 +217,23 @@ let rec updateCFuns updatedFun passedFuns =function
     else 
        updateCFuns updatedFun (passedFuns @ [hd]) tl           
 
-(* return register action c name (e.g. "clicked"), callback c function record. Throw exception if fail *)
+(* return: register action c name (e.g. "clicked"), callback c function record. Throw exception if fail *)
 let regActionHelper actionType callerType callBackFunName cenv =  
   let regActionCName, callbackFunName =
-(*  match actionType with
-  "click" -> 
-      match callerType with 
-        "Button" -> "clicked", callBackFunName ^ "Click"
-      | _  as unknown ->  raise (Failure ("Error: can't register 'click' action on type " ^ unknown))
-  | _ as unknown -> raise (Failure ("Error: unknown action type " ^ unknown))
-*)
   match (actionType, callerType) with
     ("click", "Button") -> "clicked", callBackFunName ^ "Click"
   | (_ as x,_ as y ) ->raise (Failure ("Error: unknown action " ^ x ^ " for type "))
   in
-  regActionCName, getCallbackFunRecord callbackFunName cenv.funs  
+  regActionCName, getCallbackFunRecord callbackFunName "" cenv.funs  
 
 (* current function to add *)
 let rec eval curFun env= function
   (Ast.Seq(e1, e2), cenv) ->
        let (v, nCenv), curFun, nEnv = eval curFun env (e1, cenv) in
        eval curFun nEnv (e2, nCenv)   
- | (Ast.Action (objectExpr, actionType, expr), cenv) ->
-(* this intends to handle objectExpr be a expr, not just a variable, but has error now*)
-(*    let callerType, callbackFunName, callerCExprs, cenv = match objectExpr with 
+ | (Ast.Action (callerExpr, actionType, expr), cenv) ->
+(* below code intends to handle callerExpr be a expr, not just a variable, but has error now*)
+(*    let callerType, callbackFunName, callerCExprs, cenv = match callerExpr with 
        Ast.Var(x) -> 
           let vType = getGtkTypeOrFail x env in
           vType, x, [Cast.Id (x)], cenv
@@ -237,14 +242,16 @@ let rec eval curFun env= function
           retType, (stirng_of_getPtyExpr variable ptyType), exprList, cenv
        | _ -> raise (Failure ("Error: can't register action for the given caller")) 
 *)
-let vType = getGtkTypeOrFail objectExpr env in
+let vType = getGtkTypeOrFail callerExpr env in
 (* callerType: Button, ... ; callbackFunName: button1; callerCExpr: first argument in g_signal_connect function  *)
-let callerType, callbackFunName, callerCExprs = vType, objectExpr, [Cast.Id (objectExpr)]
+let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (callerExpr)]
     in   
     (* regActionCName: "clicked" *)
     let regActionCName, callbackFunRecord = regActionHelper actionType callerType callbackFunName cenv
     in
+    (* add the new function record to cenv *)
     let cenv = {types=cenv.types; globals=cenv.globals; funs = callbackFunRecord :: cenv.funs} in
+    (* eval action 'function' *)
     let (_, cenv), callbackFunRecord, env = eval callbackFunRecord env (expr, cenv) in
     let regStmt= Cast.Expr(Cast.Call ("g_signal_connect", 
                  callerCExprs @ [Cast.StringLit(regActionCName); Cast.Call ("G_CALLBACK", [Cast.Id (callbackFunRecord.fname)]); Cast.Null]))
@@ -254,6 +261,7 @@ let callerType, callbackFunName, callerCExprs = vType, objectExpr, [Cast.Id (obj
              locals=lfdecl.locals ; body= append_to_list [regStmt] lfdecl.body } in
          let nfuns = updateCFuns nfdecl [] cenv.funs in 
     (String "Action", {types=cenv.types; globals=cenv.globals; funs=nfuns}), nfdecl, env   
+  
   | (Ast.Create (variable, containerVar, widgetType, valueList), cenv) ->
        let vdecls, stmts, newEnv = createCSyntax variable containerVar widgetType valueList env in       
          let lfdecl = curFun in
@@ -334,6 +342,8 @@ let callerType, callbackFunName, callerCExprs = vType, objectExpr, [Cast.Id (obj
          | _ -> raise (Failure 
                      ("Error: Invalid operation.")) 
         ), cenv), curFun, vars
+ 
+ (* get properties of widget *)
    | (Ast.GetPty (variable, ptyType), cenv) ->   
          let _, exprs, cenv = getPtyCExpr variable ptyType env cenv in
          let lfdecl = curFun in
@@ -341,7 +351,9 @@ let callerType, callbackFunName, callerCExprs = vType, objectExpr, [Cast.Id (obj
          let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
              locals= lfdecl.locals ; body= append_to_list stmts lfdecl.body } in
          let nfuns = updateCFuns nfdecl [] cenv.funs in 
-         (String variable, {types=cenv.types; globals=cenv.globals; funs=nfuns}), nfdecl, env   
+         (String variable, {types=cenv.types; globals=cenv.globals; funs=nfuns}), nfdecl, env 
+         
+   
     | (Ast.SetPty (variable, ptyType, argList), cenv) -> 
          let exprs, cenv = setPtyCExpr variable ptyType argList env cenv in       
          let lfdecl = curFun in

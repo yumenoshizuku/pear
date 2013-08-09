@@ -8,6 +8,9 @@ label2 = win.Label ("label2"; 220; 78),
 label2.setText(label.getText()),
 button = win.Button("button1"; 100; 30),
 button2 = win.Button("button2"; 10; 10),
-button.click(label2.setText("button1 clicked"), button2.click(label2.setText("button2 clicked")))
+button.click(label2.setText("button1 clicked"), button.click(label2.setText("button1 new event"),
+button.click(label2.setText("button1 new new event"))
+)),
+button2.click(label3=win.Label("label3"; 50; 80), label3.setText("I am a new label"))
 )
 

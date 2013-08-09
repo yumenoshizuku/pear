@@ -181,8 +181,9 @@ let run (vars, objs) =
 	(fun locals local -> NameMap.add local (Int 0) locals) locals odecl.olocals
     in
     (* Execute each statement in sequence, return updated global symbol table *)
-    snd (fst (List.fold_left exec ((locals,globals), ([], [new_cenv]))
-    odecl.obody))
+    let env, cenv = (List.fold_left exec ((locals,globals), ([], [new_cenv]))
+    odecl.obody) in
+    snd env
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
   in let globals = List.fold_left

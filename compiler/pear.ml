@@ -119,7 +119,7 @@ let run (vars, objs) =
 	  in
 	  let (locals, globals) = env in
 	  try
-	    let globals = call odecl actuals globals
+	    let (_, globals) = call odecl actuals globals
 	    in ((Int 0), cenv), (locals, globals)
 	  with ReturnException(v, globals) -> (v, cenv), (locals, globals)
     in
@@ -183,13 +183,38 @@ let run (vars, objs) =
     (* Execute each statement in sequence, return updated global symbol table *)
     let env, cenv = (List.fold_left exec ((locals,globals), ([], [new_cenv]))
     odecl.obody) in
-    snd env
+(*
+    let cvdecls, cfdecls = cenv in
+    let lfdecl = List.hd (List.rev cfdecls) in
+    let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
+    lfdecl.locals; body = (
+      (* Append "return 0;" as the last body declaration *)
+      let main_return = Cast.Return(Cast.Literal 0) in
+      match lfdecl.body with
+        []  ->     [main_return]
+      | [x] ->  x::[main_return]
+      | x   -> x @ [main_return] 
+      ) } in
+    (* Append to the new cenv *)
+    let ncenv = 
+      ( match cfdecls with
+          []  ->     []
+        | [x] ->     [nfdecl]
+        | x   -> x @ [nfdecl]) in  
+    let listing = Cast.string_of_program (cvdecls, ncenv) in
+    let oc = open_out "prog.c" in 
+    fprintf oc "%s\n" (* Append preprocessor *)
+                    ( "#include <stdio.h>\n" ^
+                      "#include <gtk/gtk.h>\n" ^ listing ); 
+*)
+     env
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
-      call (NameMap.find "main" obj_decls) [] globals
+      let env, cenv = call (NameMap.find "main" obj_decls) [] globals in
+      env
   with Not_found -> raise (Failure ("did not find the main() function"))
 
 

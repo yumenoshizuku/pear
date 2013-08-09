@@ -1,6 +1,6 @@
 (*
-** Pear Translator
-** ===============
+** The Pear Translator
+** ===================
 ** By Rui Chen, Fanxing Meng, and Risto Stevcev
 **
 ** Website:
@@ -9,19 +9,10 @@
 ** Adapted from the MicroC interpreter:
 ** http://www.cs.columbia.edu/~sedwards/classes/2013/w4115-summer2/microc.tar.gz
 *)
-
+(* Import modules *)
 open Ast
 open Cast
 open Printf
-
-module StringMap = Map.Make(struct
-  type t = string
-  let compare x y = Pervasives.compare x y
-  end)
-let vars = StringMap.empty
-let objs = StringMap.empty
-
-
 
 (* The primitive types *)
 type primitive =
@@ -29,14 +20,13 @@ type primitive =
   | String of string
   | Char of char
 
-
+(* Create a string map to store primitive types *)
 module NameMap = Map.Make(struct
   type t = string
   let compare x y = Pervasives.compare x y
 end)
 
 exception ReturnException of primitive * primitive NameMap.t
-
 
 (* Main entry point: run a program *)
 let run (vars, objs) =
@@ -52,11 +42,15 @@ let run (vars, objs) =
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env : (Ast.expr * (Cast.var_decl list * Cast.func_decl list)) ->
-        (primitive * (Cast.var_decl list * Cast.func_decl list)) * (primitive NameMap.t * primitive NameMap.t) = function
+        (primitive * (Cast.var_decl list * Cast.func_decl list)) * (primitive NameMap.t * primitive NameMap.t) 
+        = function
 
+        (* Primitive expressions *)
 	(Ast.Literal(i), cenv) -> (Int i, cenv), env
       | (Ast.StrLit(i), cenv) -> (String i, cenv), env
       | (Ast.Char(i), cenv) -> (Char i, cenv), env
+
+        (* Other expressions *)
       | (Ast.Noexpr, cenv) -> (Int 1, cenv), env (* must be non-zero for the for loop predicate *)
       | (Ast.Id(var), cenv) ->
       let locals, globals = env in
@@ -69,6 +63,8 @@ let run (vars, objs) =
 	  let (v1, cenv), env = eval env (e1, cenv) in
           let (v2, cenv), env = eval env (e2, cenv) in
 	  let boolean i = if i then 1 else 0 in
+
+            (* Define binary operations for the primitive expressions *)
             (match v1, v2 with
                Int(x1), Int(x2) ->
 	         (Int (match op with
@@ -94,16 +90,19 @@ let run (vars, objs) =
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("print", [e]), cenv) ->
-             (* print_string "print";*)
 	  let (v, (cvars, cfuncs)), env = eval env (e, cenv) in
+
           (* Get main method (last function declaration) *)
           let lfdecl = List.hd (List.rev cfuncs) in
+
           (* Create new function declaration with same args but a new body *)
           let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
             lfdecl.locals; body = (
+
               (* Create the call to printf *)
               let print = 
                 ( match v with
+
                     (* Match parameter with result *)
                     Int(x) -> 
                       Cast.Expr (Call("printf", [Cast.StrLit "\"%d\\n\""; Cast.Literal x]))
@@ -117,6 +116,7 @@ let run (vars, objs) =
                 | [x] ->  x::[print]
                 | x   -> x @ [print] 
           ) } in
+
          (* Create new environment with the new main method *)
          let ncenv = 
            ( match cfuncs with
@@ -129,10 +129,10 @@ let run (vars, objs) =
              Int(x) -> print_endline (string_of_int x)
            | String(x) -> print_endline x
            | Char(x) -> print_endline (String.make 1 x));
+
            (* Return the new environment *)
 	   ((Int 0), (cvars, ncenv)), env
       | (Ast.Call(f, actuals), cenv) ->
-          (*print_string "call";*)
 	  let odecl =
 	    try NameMap.find f obj_decls
 	    with Not_found -> raise (Failure ("undefined function " ^ f))
@@ -202,10 +202,12 @@ let run (vars, objs) =
       with Invalid_argument(_) ->
 	raise (Failure ("wrong number of arguments passed to " ^ odecl.oname))
     in
+
     (* Initialize local variables to 0 *)
     let locals = List.fold_left
 	(fun locals local -> NameMap.add local (Int 0) locals) locals odecl.olocals
     in
+
     (* Create the main method *)
     let new_cenv = {
         returnType = "int";
@@ -214,6 +216,7 @@ let run (vars, objs) =
         locals = [];
         body = [];
     } in
+
     (* Execute each statement in sequence, return updated global symbol table *)
     let env, cenv = (List.fold_left exec ((locals,globals), ([], [new_cenv]))
     odecl.obody) in
@@ -224,150 +227,37 @@ let run (vars, objs) =
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
       let env, cenv = call (NameMap.find "main" obj_decls) [] globals in
-      (*print_int (List.length (snd cenv));*)
-    let cvdecls, cfdecls = cenv in
-    let lfdecl = List.hd (List.rev cfdecls) in
-    let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
-    lfdecl.locals; body = (
-      (* Append "return 0;" as the last body declaration *)
-      let main_return = Cast.Return(Cast.Literal 0) in
-      match lfdecl.body with
-        []  ->     [main_return]
-      | [x] ->  x::[main_return]
-      | x   -> x @ [main_return] 
-      ) } in
-    (* Append to the new cenv *)
-    let ncenv = 
+      let cvdecls, cfdecls = cenv in
+      let lfdecl = List.hd (List.rev cfdecls) in
+      let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
+        lfdecl.locals; body = (
+
+        (* Append "return 0;" as the last body declaration *)
+        let main_return = Cast.Return(Cast.Literal 0) in
+        match lfdecl.body with
+          []  ->     [main_return]
+        | [x] ->  x::[main_return]
+        | x   -> x @ [main_return] 
+        ) } in
+
+      (* Append to the new cenv *)
+      let ncenv = 
       ( match cfdecls with
           []  ->     []
         | [x] ->     [nfdecl]
         | x   -> x @ [nfdecl]) in  
-    let listing = Cast.string_of_program (cvdecls, ncenv) in
-    let oc = open_out "prog.c" in 
-    fprintf oc "%s\n" (* Append preprocessor *)
-                    ( "#include <stdio.h>\n" ^
-                      "#include <gtk/gtk.h>\n" ^ listing ); 
+      let listing = Cast.string_of_program (cvdecls, ncenv) in
+
+      (* Write translation to prog.c *)
+      let oc = open_out "prog.c" in 
+
+      fprintf oc "%s\n" (* Append preprocessor args *)
+                      ( "#include <stdio.h>\n" ^
+                        "#include <gtk/gtk.h>\n" ^ listing ); 
   with Not_found -> raise (Failure ("did not find the main() function"))
 
-
-(* Primitive types that translate to C *)
-(*
-type primitive =
-    Int of int
-    | String of string
-    | Char of char
-    *)
-(*
-let rec eval env = function
-   (Ast.Literal(x), cenv) -> (Int x, cenv), env
- | (Ast.StrLit(x), cenv) -> (String x, cenv), env
- | (Ast.Char(x), cenv) -> (Char x, cenv), env
- | (Ast.Id(x), cenv) ->
-         let vars, objs = env in
-         if StringMap.mem x vars then
-             (StringMap.find x vars, cenv), env
-         else raise (Failure ("Error: Undeclared identifier " ^ x))
-         (*
- | (Ast.Seq(e1, e2), cenv) ->
-         let (value, ncenv), vars = eval env (e1, cenv) in
-         eval vars (e2, ncenv)*)
- | (Ast.Assign(x, e), cenv) ->
-         let (value, cenv), (vars, objs) = eval env (e, cenv) in 
-             (value, cenv), ((StringMap.add x value vars), objs)
- | (Ast.Call(x, e), cenv) -> (Int 1, cenv), env
- | (Ast.Puts(e1), cenv) -> 
-         let (v1, (cvars, cenv)), vars = eval env (e1, cenv) in
-         (* Get main method (last function declaration) *)
-         let lfdecl = List.hd (List.rev cenv) in
-         (* Create new function declaration with same args but a new body *)
-         let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
-             lfdecl.locals; body = (
-               (* Create the call to printf *)
-               let print = 
-                 ( match v1 with
-                     (* Match parameter with result *)
-                     Int(x) -> 
-                       Cast.Expr (Call("printf", [Cast.StrLit "\"%d\\n\""; Cast.Literal x]))
-                   | String(x) -> 
-                       Cast.Expr (Call("printf", [Cast.StrLit "\"%s\\n\""; Cast.StrLit ("\"" ^ x ^ "\"")]))
-                   | Char(x) -> 
-                       Cast.Expr (Call("printf", [Cast.StrLit "\"%c\\n\""; Cast.StrLit ("'" ^ (String.make 1 x) ^ "'")])) ) in
-                 (* Append to the end of the body *)
-                 match lfdecl.body with
-                   []  ->     [print]
-                 | [x] ->  x::[print]
-                 | x   -> x @ [print] 
-           ) } in
-         (* Create new environment with the new main method *)
-         let ncenv = 
-           ( match cenv with
-               []  ->     []
-             | [x] -> [nfdecl]
-             | x   -> x @ [nfdecl]) in 
-         (* Return the new environment *)
-         (v1, (cvars, ncenv)), env 
- | (Ast.Binop(e1, op, e2), cenv) ->
-   let (v1, cenv), vars = eval env (e1, cenv) in
-   let (v2, cenv), vars = eval env (e2, cenv) in
-       ((match v1, v2 with
-            (* Define binary operators based on types *)
-            Int(x1), Int(x2) ->
-            Int (match op with
-                   Ast.Add -> x1 + x2
-                 | Ast.Sub -> x1 - x2
-                 | Ast.Mul -> x1 * x2
-                 | Ast.Div -> x1 / x2)
-         |  String(x1), String(x2) ->
-            String (match op with
-                   Ast.Add -> x1 ^ x2
-                 | _ -> raise (Failure 
-                     ("Error: Invalid string operation.")))
-         | _ -> raise (Failure 
-                     ("Error: Invalid operation.")) 
-        ), cenv), vars
-*)
-(*
-let rec exec env = function
- (* Initialize environment with the main method and no variable declarations *)
-   Ast.Expr(e) ->
-       eval env (e, ([], [cenv]))
- | Ast.Return(e) ->
-         let v, vars = eval env (e, ([], [cenv])) in
-   v, vars
-*)
-
-
+(* Lex, parse and run program *)
 let _ =
   let lexbuf = Lexing.from_channel stdin in
   let program = Parser.program Scanner.token lexbuf in
   run program 
-  (*in
-  let (result, (cvars, cenv)), evars = exec (vars, objs) program in
-
-  (* Append "return 0;" at the end of the main method *) 
-  let lfdecl = List.hd (List.rev cenv) in
-  let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
-    lfdecl.locals; body = (
-      (* Append "return 0;" as the last body declaration *)
-      let main_return = Cast.Return(Cast.Literal 0) in
-      match lfdecl.body with
-        []  ->     [main_return]
-      | [x] ->  x::[main_return]
-      | x   -> x @ [main_return] 
-      ) } in
-  (* Append to the new cenv *)
-  let ncenv = 
-    ( match cenv with
-        []  ->     []
-      | [x] ->     [nfdecl]
-      | x   -> x @ [nfdecl]) in  
-  let listing = Cast.string_of_program (cvars, ncenv) in
-  let oc = open_out "prog.c" in 
-  fprintf oc "%s\n" (* Append preprocessor *)
-                    ( "#include <stdio.h>\n" ^
-                      "#include <gtk/gtk.h>\n" ^ listing  )
-*)
-(*
-let v1 : (string NameMap.t * string NameMap.t) -> string * (obj_decl list * var_decl list) -> (string * (obj_decl list * var_decl list)) * (string NameMap.t * string NameMap.t) =
-    fun (nmv,nmf) (x, (y,z)) -> "a", ([],[]),(NameMap.empty v, NameMap.empty
-    w)*)

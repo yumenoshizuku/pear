@@ -191,6 +191,8 @@ let run (vars, objs) =
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
       let env, cenv = call (NameMap.find "main" obj_decls) [] globals in
+
+      (*
     let cvdecls, cfdecls = cenv in
     let lfdecl = List.hd (List.rev cfdecls) in
     let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
@@ -213,6 +215,7 @@ let run (vars, objs) =
     fprintf oc "%s\n" (* Append preprocessor *)
                     ( "#include <stdio.h>\n" ^
                       "#include <gtk/gtk.h>\n" ^ listing ); 
+                      *)
       env
   with Not_found -> raise (Failure ("did not find the main() function"))
 

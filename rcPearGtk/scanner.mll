@@ -16,8 +16,10 @@ rule token = parse
    | "Window" { WINDOW }
    | "getText" as lit { GETPTY (lit) }
    | "setText" as lit { SETPTY (lit) }
-   | "Label" | "Button" as lit { CREATE (lit) }
+   | "Label" | "Button" | "TextEntry" | "Combo" as lit { CREATE (lit) }
    | "click" as lit { ACTION (lit) }
+   | "show"  { SHOW }
+   | "gtkMain" { GTKMAIN }
    | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
    | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as var { VARIABLE(var) }
    | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']*'"' as strlit  

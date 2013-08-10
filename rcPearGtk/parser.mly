@@ -9,7 +9,9 @@
 %token <string> SETPTY
 %token <string> CREATE
 %token <string> ACTION
+%token SHOW
 %token WINDOW 
+%token GTKMAIN
 %token LPAREN RPAREN
 %token RETURN
 
@@ -44,6 +46,8 @@ expr:
     | VARIABLE DOT GETPTY LPAREN RPAREN { GetPty($1, $3) }
     | VARIABLE DOT SETPTY LPAREN actuals_opt RPAREN { SetPty($1, $3, $5) }
     | VARIABLE DOT ACTION LPAREN expr RPAREN { Action($1, $3, $5) }
+    | VARIABLE DOT SHOW LPAREN RPAREN { Show ($1) }
+    | GTKMAIN { GtkMain }
 
 actuals_opt:
     /* nothing */ { [] }

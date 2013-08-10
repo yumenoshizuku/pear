@@ -5,19 +5,33 @@
 rule token = parse 
      [' ' '\t' '\r' '\n'] { token lexbuf }
    | "(*"                 { comment lexbuf }
+         | "->"     { ARROW } 
    | '+'      { PLUS }    | '*'      { TIMES } 
-   | '-'      { MINUS }   | '/'      { DIVIDE }   
+   | '-'      { MINUS }   | '/'      { DIVIDE }
+   | "=="     { EQ }
+   | "!="     { NEQ }
+   | '<'      { LT }
+   | "<="     { LEQ }
+   | ">"      { GT }
+   | ">="     { GEQ }   
    | '('      { LPAREN }  | ')'      { RPAREN } 
    | '='      { ASSIGN }  | ','      { COMMA }
    | '.'      { DOT }
+   | '{'      { LBRACKET }
+   | '}'      { RBRACKET }
    | "puts"   { PUTS }    | "return" { RETURN }
    | eof      { EOF }
+   | "if"     { IF }
+   | "else"   { ELSE }
+   | "while"  { WHILE }
    | ';'      { SEMI }
    | "Window" { WINDOW }
-   | "getText" as lit { GETPTY (lit) }
+   | "getText" | "getSelection" as lit { GETPTY (lit) }
    | "setText" as lit { SETPTY (lit) }
-   | "Label" | "Button" as lit { CREATE (lit) }
+   | "Label" | "Button" | "TextEntry" | "Combo" as lit { CREATE (lit) }
    | "click" as lit { ACTION (lit) }
+   | "show"  { SHOW }
+   | "gtkMain" { GTKMAIN }
    | ['0'-'9']+ as lit   { LITERAL(int_of_string lit) }
    | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as var { VARIABLE(var) }
    | '"'['a'-'z' 'A'-'Z' '0'-'9' ' ' '\t' '\r' '\n']*'"' as strlit  

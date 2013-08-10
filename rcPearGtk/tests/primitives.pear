@@ -1,0 +1,16 @@
+return
+{
+a=10,
+b=3+9*5,
+c=(a+10)*2,
+d=c-1,
+str="hello world",
+chr='c',
+puts(a),
+puts(5),
+puts((b-3)*4),
+puts("const str"),
+puts(str),
+puts('c'),
+puts(chr)
+}

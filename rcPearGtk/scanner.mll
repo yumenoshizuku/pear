@@ -21,6 +21,9 @@ rule token = parse
    | '}'      { RBRACKET }
    | "puts"   { PUTS }    | "return" { RETURN }
    | eof      { EOF }
+   | "if"     { IF }
+   | "else"   { ELSE }
+   | "while"  { WHILE }
    | ';'      { SEMI }
    | "Window" { WINDOW }
    | "getText" | "getSelection" as lit { GETPTY (lit) }

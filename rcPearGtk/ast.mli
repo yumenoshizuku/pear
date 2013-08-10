@@ -14,11 +14,14 @@ type expr =
     | Window of string
     (* variable name, container (window) variable name, widget type and argument list *)
     | Create of string * string * string * expr list  
-    | SetPty of string * string * expr list
+    | SetPty of expr * string * expr list
     (* expr(variable or getPty), action type, callback function *)
     | Action of string * string * expr 
     | Show of string
     | GtkMain
+    | If of expr * expr * expr
+    | IfNoElse of expr * expr
+    | While of expr * expr
 
 type stmt =
     Expr of expr

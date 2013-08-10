@@ -8,9 +8,20 @@ b=50,
 text1 = win.TextEntry(""; a; b),
 text2 = win.TextEntry("Output"; a; b+100),
 button = win.Button("Click me"; 250; 100),
+if(a>b) 
+	(label->setText("initially a is greater than b")),
 combo=win.Combo(200; 200; "select1"; "select2" ; "select3"), 
 button.click(
-			 label.setText(newStr), text2.setText(combo->getSelection()->getText())),
+	label->setText(newStr), 
+	text2->setText(combo->getSelection()->getText()),
+	combo->getSelection()->setText(text1->getText()),
+	if(a>b) 
+		(label->setText("a is still greater than b"), puts(a))
+	else
+		(label->setText("b is greater than a")),
+	while(a>b)
+	 	(a=a-1,puts(a-b))	
+	),
 win.show(),
 gtkMain
 }

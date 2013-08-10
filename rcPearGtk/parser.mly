@@ -3,6 +3,7 @@
 %token LPAREN RPAREN LBRACKET RBRACKET DOT ARROW
 %token PLUS MINUS TIMES DIVIDE EOF PUTS COMMA ASSIGN SEMI
 %token EQ NEQ LT LEQ GT GEQ
+%token IF ELSE WHILE 
 %token <int> LITERAL
 %token <string> STRLITERAL
 %token <char> CHAR
@@ -16,16 +17,16 @@
 %token GTKMAIN
 %token RETURN
 
-%left ARROW
+%nonassoc NOELSE
+%nonassoc ELSE
 %left COMMA
-
 %left ASSIGN
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left PUTS
-/*%left DOT*/
+%left LBRACKET DOT ARROW
 
 %start stmt
 /* %type <Ast.expr> expr */
@@ -54,11 +55,14 @@ expr:
     | LPAREN expr RPAREN      { Paren($2) }
     | VARIABLE ASSIGN WINDOW LPAREN RPAREN   { Window($1) }
     | VARIABLE ASSIGN VARIABLE DOT CREATE LPAREN actuals_opt RPAREN { Create ($1, $3, $5, $7) }    
-    | VARIABLE DOT SETPTY LPAREN actuals_opt RPAREN { SetPty($1, $3, $5) }
+    | expr ARROW SETPTY LPAREN actuals_opt RPAREN { SetPty($1, $3, $5) }
     | VARIABLE DOT ACTION LPAREN expr RPAREN { Action($1, $3, $5) }
     | VARIABLE DOT SHOW LPAREN RPAREN { Show ($1) }
     | GTKMAIN { GtkMain }
     | expr COMMA expr         { Seq($1, $3) }
+    | IF LPAREN expr RPAREN LPAREN expr RPAREN ELSE LPAREN expr RPAREN { If ($3, $6, $10) }
+    | IF LPAREN expr RPAREN LPAREN expr RPAREN %prec NOELSE { IfNoElse ($3, $6) }
+    | WHILE LPAREN expr RPAREN LPAREN expr RPAREN { While ($3, $6) }
 
 actuals_opt:
     /* nothing */ { [] }

@@ -178,12 +178,21 @@ let rec evalExprRetValue curFun cenv env =function
       curFun, cenv, env, retType, [Cast.Binop (List.hd e1CExpr, castOp, List.hd e2CExpr)]                                                    
    | _ -> raise (Failure ("Error: not a type that returns a value "))      
 
+(* evalate Var or GetPty expression. *)
+(* This is used when evaulating an expression that allowed chained get expression,  
+i.e. combo.getSelection.setText("new text") *)
+(* input expr *)
+(* returns : return type, c expr*)
+let evalVarOrGetPty curFun cenv env =function
+   Ast.Var(var) -> evalVar curFun cenv env var
+   | Ast.GetPty(callerExpr, methodType) -> getPtyCExpr curFun cenv env methodType callerExpr
+   | _ -> raise (Failure ("Error: not a type that can apply gtk operation "))  
 
 (* input varaible, propert type, initialValueList *) 
 (* returns cexpr list of the set operation (always one expr) *)
 (* cenv is updated when the initial value expr is getPty expr which updates cenv*)
-let setPtyCExpr curFun cenv env variable methodType valueList= 
-  let vType = getVarTypeOrFail variable env in
+let setPtyCExpr curFun cenv env callerExpr methodType valueList= 
+  let curFun, cenv, env, vType, callerCExpr = evalVarOrGetPty curFun cenv env callerExpr in
   match methodType with
   "setText" -> 
      if not (List.length valueList = 1) then
@@ -199,7 +208,7 @@ let setPtyCExpr curFun cenv env variable methodType valueList=
         | _ -> raise (Failure ("Error: can't set text of type " ^ vType)) 
       in        
       let exprList = [Cast.Call (functionName, 
-                         Cast.Call (gtkNameOfType vType, [Cast.Id (variable)]) :: argCExprList
+                         Cast.Call (gtkNameOfType vType, callerCExpr) :: argCExprList
                          )]
       in curFun, cenv, env, exprList
    | _ as unknown -> raise (Failure ("Error: unknown set property method " ^ unknown))  
@@ -318,7 +327,7 @@ let createCSyntax curFun cenv env variable containerVar widgetType valueList=
        in
        let env = (StringMap.add variable (String "TextEntry") env)  
        in
-       let curFun, cenv, env, setTextCExpr= setPtyCExpr curFun cenv env variable "setText" [List.hd valueList]
+       let curFun, cenv, env, setTextCExpr= setPtyCExpr curFun cenv env (Ast.Var(variable)) "setText" [List.hd valueList]
        in
        let curFun, cenv, env, arg2, arg3 = getCExprOfInitPosition curFun cenv env (List.tl valueList) 
        in  
@@ -381,7 +390,7 @@ let rec getCallbackFunRecord funName longestMatchedItem= function
 (* input: updated function, passed funs in list, remaining funs in list *)      
 (* return: updated function list *)
 let rec updateCFuns updatedFun passedFuns =function
-    [] -> raise (Failure ("Error: pear.ml has bug in updated C functions "))
+    [] -> passedFuns
   | hd :: tl ->
     if hd.fname = updatedFun.fname then
        passedFuns @ [updatedFun] @ tl
@@ -436,15 +445,18 @@ let rec eval curFun cenv env= function
       curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String varType 
 (*define non-Gtk variable*)
  | Ast.Asn(x, e)->
-      if StringMap.mem x env then
- 	      raise (Failure ("Error: duplicate variable " ^ x))
- 	  else 
  	     let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
- 	     let vdecl = match retType with
-               "Char" -> Cast.VDecl(Cast.BasicType(Cast.Char), x)
-             | "Numeric" -> Cast.VDecl(Cast.BasicType(Cast.Int), x)
-             | "Text" -> Cast.OneDArrDecl(Cast.BasicType(Cast.Char), x, Cast.Literal(256))
+ 	     if StringMap.mem x env && not (retType=string_of_primitive (StringMap.find x env)) then
+ 	         raise (Failure ("Error: can't change type of variable " ^ x))
+ 	     else  	
+ 	     let vdecl = 
+ 	     if not (StringMap.mem x env) then
+ 	     match retType with
+               "Char" -> [Cast.VDecl(Cast.BasicType(Cast.Char), x)]
+             | "Numeric" -> [Cast.VDecl(Cast.BasicType(Cast.Int), x)]
+             | "Text" -> [Cast.OneDArrDecl(Cast.BasicType(Cast.Char), x, Cast.Literal(256))]
              | _ as unknown -> raise (Failure ("Error: unsupport primitive variable " ^ unknown))
+         else []
          in    
  	     let stmts = match retType with
                "Char" -> [Cast.Expr (Cast.Assign(x, List.hd cExpr)) ]
@@ -455,7 +467,7 @@ let rec eval curFun cenv env= function
  	     let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
              locals=curFun.locals; body= append_to_list stmts curFun.body } in
          let nfuns =updateCFuns curFun [] cenv.funs in 
-         curFun, {types=cenv.types; globals=cenv.globals @ [vdecl]; funs=nfuns}, (StringMap.add x (String retType) env), String retType    
+         curFun, {types=cenv.types; globals=cenv.globals @ vdecl; funs=nfuns}, (StringMap.add x (String retType) env), String retType    
 
  | Ast.Puts(e) -> 
        let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
@@ -488,19 +500,9 @@ let rec eval curFun cenv env= function
    let curFun, cenv, env= evalShow curFun cenv env variable in
     curFun, cenv, env, String "Show"     
  | Ast.Action (callerExpr, actionType, expr) ->
-(* below code intends to handle callerExpr be a expr, not just a variable, but has error now*)
-(*    let callerType, callbackFunName, callerCExprs, cenv = match callerExpr with 
-       Ast.Var(x) -> 
-          let vType = getVarTypeOrFail x env in
-          vType, x, [Cast.Id (x)], cenv
-       | Ast.GetPty (variable, ptyType) ->
-          let retType, exprList, cenv = getPtyCExpr variable ptyType env cenv in 
-          retType, (stirng_of_getPtyExpr variable ptyType), exprList, cenv
-       | _ -> raise (Failure ("Error: can't register action for the given caller")) 
-*)
-let vType = getVarTypeOrFail callerExpr env in
-(* callerType: Button, ... ; callbackFunName: button1; callerCExpr: first argument in g_signal_connect function  *)
-let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (callerExpr)]
+    let vType = getVarTypeOrFail callerExpr env in
+    (* callerType: Button, ... ; callbackFunName: button1; callerCExpr: first argument in g_signal_connect function  *)
+    let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (callerExpr)]
     in   
     (* regActionCName: "clicked" *)
     let regActionCName, callbackFunRecord = regActionHelper cenv actionType callerType callbackFunName
@@ -517,7 +519,49 @@ let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (cal
              locals=lfdecl.locals ; body= append_to_list [regStmt] lfdecl.body } in
          let nfuns = updateCFuns nfdecl [] cenv.funs in 
     nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "Action"
-  
+  | Ast.If (cond, ifExpr, elseExpr) ->
+     let curFun, cenv, env, condType, condCExpr = evalExprRetValue curFun cenv env cond in
+     if not ("Boolean" = condType) then
+        raise (Failure ("Error: not a boolean expression "))
+     else
+     (* eval ifExpr and elseExpr, put them in stmt list *)
+     let fakeFunForIf= {returnType = Cast.BasicType (Cast.Void); fname = "fake";
+                   formals = [];locals = [];body = [];} in
+     let fakeFunForIf, cenv, env, _ = eval fakeFunForIf cenv env ifExpr in
+     let fakeFunForElse= {returnType = Cast.BasicType (Cast.Void); fname = "fake";
+                   formals = [];locals = [];body = [];} in
+     let fakeFunForElse, cenv, env, _ = eval fakeFunForElse cenv env elseExpr in
+     let cIf= Cast.If (List.hd condCExpr, Cast.Block(fakeFunForIf.body), Cast.Block(fakeFunForElse.body)) in
+     let nfdecl = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals ; body= append_to_list [cIf] curFun.body } in
+     let nfuns = updateCFuns nfdecl [] cenv.funs in 
+     nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "IfWithElse" 
+  | Ast.IfNoElse (cond, ifExpr) ->
+     let curFun, cenv, env, condType, condCExpr = evalExprRetValue curFun cenv env cond in
+     if not ("Boolean" = condType) then
+        raise (Failure ("Error: not a boolean expression "))
+     else
+     let fakeFunForIf= {returnType = Cast.BasicType (Cast.Void); fname = "fake";
+                   formals = [];locals = [];body = [];} in
+     let fakeFunForIf, cenv, env, _ = eval fakeFunForIf cenv env ifExpr in
+     let cIf= Cast.If (List.hd condCExpr, Cast.Block(fakeFunForIf.body), Cast.Block([])) in
+     let nfdecl = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals ; body= append_to_list [cIf] curFun.body } in
+     let nfuns = updateCFuns nfdecl [] cenv.funs in 
+     nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "IfWithElse"                   
+  | Ast.While (cond, bodyExpr) ->
+     let curFun, cenv, env, condType, condCExpr = evalExprRetValue curFun cenv env cond in
+     if not ("Boolean" = condType) then
+        raise (Failure ("Error: not a boolean expression "))
+     else
+     let fakeFun= {returnType = Cast.BasicType (Cast.Void); fname = "fake";
+                   formals = [];locals = [];body = [];} in
+     let fakeFun, cenv, env, _ = eval fakeFun cenv env bodyExpr in
+     let cWhile= Cast.While (List.hd condCExpr, Cast.Block(fakeFun.body)) in
+     let nfdecl = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals ; body= append_to_list [cWhile] curFun.body } in
+     let nfuns = updateCFuns nfdecl [] cenv.funs in 
+     nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "While"    
   | Ast.Create (variable, containerVar, widgetType, valueList) ->
        let curFun, cenv, env, vdecls, stmts= createCSyntax curFun cenv env variable containerVar widgetType valueList in       
          let lfdecl = curFun in
@@ -586,14 +630,14 @@ let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (cal
          let nfuns = updateCFuns nfdecl [] cenv.funs in 
          nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType
  
-    | Ast.SetPty (variable, ptyType, argList)-> 
-         let curFun, cenv, env, exprs = setPtyCExpr curFun cenv env variable ptyType argList in       
+    | Ast.SetPty (callerExpr, ptyType, argList)-> 
+         let curFun, cenv, env, exprs = setPtyCExpr curFun cenv env callerExpr ptyType argList in       
          let lfdecl = curFun in
          let stmts = getCStmtListFromExprList exprs in
          let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
              locals= lfdecl.locals ; body= append_to_list stmts lfdecl.body } in
          let nfuns = updateCFuns nfdecl [] cenv.funs in 
-         nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String variable     
+         nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "SetPty"     
 
 
 let rec exec env = function

@@ -16,6 +16,8 @@ type expr =
     | SetPty of string * string * expr list
     (* expr(variable or getPty), action type, callback function *)
     | Action of string * string * expr 
+    | Show of string
+    | GtkMain
 
 type stmt =
     Expr of expr

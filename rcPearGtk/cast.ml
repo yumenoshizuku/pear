@@ -1,4 +1,4 @@
-type mytypes = Int | Char | Void | GtkWidget | GPointer | GChar | Struct of string
+type mytypes = Int | Char | Void | GtkWidget | GPointer | GChar | GList | Struct of string
 type uop = Ref
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
@@ -108,6 +108,7 @@ let rec string_of_datatype =function
    | GtkWidget -> "GtkWidget"
    | GPointer -> "gpointer"
    | GChar -> "gchar"
+   | GList -> "GList"
    | Struct (name) -> "struct " ^ name
    
 let rec string_of_datatypeDecl = function

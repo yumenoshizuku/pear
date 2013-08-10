@@ -22,8 +22,8 @@ let string_of_primitive primitive = match primitive with
 let getFrameNameFromWindowName windowName=
    windowName ^ "Frame" 
 
-(* find type of gtk variable in symbol table *)   
-let getGtkTypeOrFail variableName env= 
+(* find type of variable in symbol table *)   
+let getVarTypeOrFail variableName env= 
    if not (StringMap.mem variableName env) then
  	  raise (Failure ("Error: undefined variable " ^ variableName))
    else
@@ -56,7 +56,7 @@ let gtkNameOfType vType = match vType with
      "Label" -> "GTK_LABEL"
    | "TextEntry" -> "GTK_ENTRY"  
    | "Combo" -> "GTK_COMBO"
-   | _ -> raise (Failure ("Error: unknown gtk type " ^ vType))   
+   | _ -> raise (Failure ("Error: unknown gtk type or not gtk type" ^ vType))   
 
 let stirng_of_getPtyExpr variable methodType = 
    variable ^ methodType
@@ -64,46 +64,135 @@ let stirng_of_getPtyExpr variable methodType =
 (* every 'eval' function should take curFun, cenv and env as argument and return them, 
  because they all may have changed after the evaluation *)
 
+(* input methodType, caller expr *)
+(* return C expr list of get operation (usually one expr) *)
+let getPtyHelper curFun cenv env methodType vType callerCExprList=  
+  match methodType with 
+  "getText" -> 
+      let functionName = match vType with    
+         "Label" -> "gtk_label_get_text"
+       | "TextEntry" -> "gtk_entry_get_text" 
+       | _ -> raise (Failure ("Error: can't get text of type " ^ vType))        
+     in
+      let exprs = [ Cast.Call (functionName, 
+                        [Cast.Call (gtkNameOfType vType, callerCExprList)
+                        ])]
+      in curFun, cenv, env, "Text", exprs
+  | "getSelection" -> 
+       let exprs =
+       match vType with    
+         "Combo" -> 
+           [Cast.Member (Cast.Call (gtkNameOfType vType, callerCExprList), "entry")]
+           (*
+           let comboSelectionExpr =
+           match List.hd callerCExprList with
+             Cast.Id (var) -> [Cast.Member (Cast.Call (gtkNameOfType vType, [Cast.Id(var)]), "entry")]
+             | _ -> raise (Failure ("Error: select selection of combo must apply on variable expression "))
+           in
+           comboSelectionExpr  
+           *)
+         | _ -> raise (Failure ("Error: can't get selection of type " ^ vType))        
+     in
+     curFun, cenv, env, "TextEntry", exprs      
+  | _ as unknown -> raise (Failure ("Error: unknown get property method " ^ unknown))   
 
-(* arguments: variable, property type *)
+(* arguments: property type, caller expr *)
 (* returns: return type ("Text", "Numeric", or widget type), C expr list of the get operation (looks it is always one expr) *)
 (* Note that we need update cenv when the getter is get a widget in a container, we define a function to get the widget, 
 and the C expr list calls this function *)
-let getPtyCExpr curFun cenv env variable methodType = 
-   let vType = getGtkTypeOrFail variable env in
-    match methodType with 
-    "getText" -> 
-      let functionName = match vType with    
-         "Label" -> "gtk_label_get_text"
-        | "TextEntry" -> "gtk_entry_get_text" 
-        | _ -> raise (Failure ("Error: can't get text of type " ^ vType))  
+let rec getPtyCExpr curFun cenv env methodType = function
+     Ast.Var(variable) ->
+       let vType = getVarTypeOrFail variable env in
+       let callerCExpr = [Cast.Id (variable)] in
+       getPtyHelper curFun cenv env methodType vType callerCExpr
+   | Ast.GetPty (aCallerExpr, aMethodType) ->
+       let curFun, cenv, env, retType, callerCExpr = getPtyCExpr curFun cenv env aMethodType aCallerExpr in
+       getPtyHelper curFun cenv env methodType retType callerCExpr
+   | _ -> raise (Failure ("Error: unsupported expression type to get property "))   
+
+(* evaluate a Var expression *)
+(* input varName *)
+(* return variable type, c expr list *)
+let evalVar curFun cenv env varName=
+   let varType = getVarTypeOrFail varName env
+   in curFun, cenv, env, varType, [Cast.Id(varName)]   
+
+(* eval Lit, StringLit or Char *)
+(* input: expr to evaluate; returns: return type, c expr list *)
+(* seems it never changes curFun, cenv or env, but pass and return them anyway to keep a consistent code manner *)
+let evalLitTypeExpr curFun cenv env litExpr = match litExpr with
+     Ast.Lit(x) -> curFun, cenv, env, "Numeric", [Cast.Literal(x)] 
+   | Ast.StrLit(x) -> curFun, cenv, env, "Text", [Cast.StringLit(x)]
+   | Ast.Char(x) -> curFun, cenv, env, "Char", [Cast.CharLit(x)]
+   | _ -> raise (Failure ("Error: not a lit type "))   
+
+(* evaulate expression that returns something *)
+(* all literal expr, Var, GetPty Binop are valid expression here *)
+(* input: expr; return retType, c expr list of this operation *)
+let rec evalExprRetValue curFun cenv env =function
+     Ast.Var(x) -> evalVar curFun cenv env x
+   | Ast.GetPty (callerExpr, methodType) -> getPtyCExpr curFun cenv env methodType callerExpr
+   | Ast.Lit(x) as e-> evalLitTypeExpr curFun cenv env e
+   | Ast.StrLit(x) as e-> evalLitTypeExpr curFun cenv env e
+   | Ast.Char(x) as e-> evalLitTypeExpr curFun cenv env e
+   | Ast.Paren(e) ->
+         let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
+         curFun, cenv, env, retType, [Cast.Paren(List.hd cExpr)]
+   | Ast.Binop (e1, op, e2) ->
+     let curFun, cenv, env, e1Type, e1CExpr = evalExprRetValue curFun cenv env e1 in
+     let curFun, cenv, env, e2Type, e2CExpr = evalExprRetValue curFun cenv env e2 in
+     let retType, castOp=
+     match op with
+      (* TODO not trival to support + for strings, since C doesn't support it *)
+        Ast.Add -> if e1Type = "Numeric" && e2Type = "Numeric" then
+                "Numeric", Cast.Add
+             else raise (Failure ("Error: Add expression should take numeric type expression "))   
+      | Ast.Sub -> if e1Type = "Numeric" && e2Type = "Numeric" then
+                "Numeric", Cast.Sub
+             else raise (Failure ("Error: Sub expression should take numeric type expression ")) 
+      | Ast.Mul -> if e1Type = "Numeric" && e2Type = "Numeric" then
+                "Numeric", Cast.Mult
+             else raise (Failure ("Error: Mul expression should take numeric type expression "))
+      | Ast.Div -> if e1Type = "Numeric" && e2Type = "Numeric" then
+                "Numeric", Cast.Div
+             else raise (Failure ("Error: Div expression should take numeric type expression "))  
+      | Ast.Equal -> if e1Type = e2Type  then
+                "Boolean", Cast.Equal
+             else raise (Failure ("Error: Equal expression should take same type expressions "))
+      | Ast.Neq -> if e1Type = e2Type  then
+                "Boolean", Cast.Neq
+             else raise (Failure ("Error: Neq expression should take same type expressions "))
+      | Ast.Less -> if e1Type = e2Type  then
+                "Boolean", Cast.Less
+             else raise (Failure ("Error: Less expression should take same type expressions "))
+      | Ast.Leq -> if e1Type = e2Type  then
+                "Boolean", Cast.Leq
+             else raise (Failure ("Error: Leq expression should take same type expressions "))  
+      | Ast.Greater -> if e1Type = e2Type  then
+                "Boolean", Cast.Greater
+             else raise (Failure ("Error: Greater expression should take same type expressions "))
+      | Ast.Geq -> if e1Type = e2Type  then
+                "Boolean", Cast.Geq
+             else raise (Failure ("Error: Geq expression should take same type expressions "))                                                                    
       in
-      let exprs = [ Cast.Call (functionName, 
-                        [Cast.Call (gtkNameOfType vType, [Cast.Id (variable)])
-                        ])]
-      in curFun, cenv, env, "Text", exprs
-    | _ as unknown -> raise (Failure ("Error: unknown get property method " ^ unknown))
+      curFun, cenv, env, retType, [Cast.Binop (List.hd e1CExpr, castOp, List.hd e2CExpr)]                                                    
+   | _ -> raise (Failure ("Error: not a type that returns a value "))      
+
 
 (* input varaible, propert type, initialValueList *) 
 (* returns cexpr list of the set operation (always one expr) *)
 (* cenv is updated when the initial value expr is getPty expr which updates cenv*)
 let setPtyCExpr curFun cenv env variable methodType valueList= 
-  let vType = getGtkTypeOrFail variable env in
+  let vType = getVarTypeOrFail variable env in
   match methodType with
   "setText" -> 
      if not (List.length valueList = 1) then
         raise (Failure ("Error: method setText takes 1 argument"))
      else 
-     let curFun, cenv, env, argCExprList =
-      match List.hd valueList with 
-          Ast.StrLit (x) -> curFun, cenv, env, [Cast.StringLit x]
-        | Ast.GetPty (v2, ptyType) ->
-           let curFun, cenv, env, retType, exprList= getPtyCExpr curFun cenv env v2 ptyType in
-           if not (retType = "Text") then
+     let curFun, cenv, env, retType, argCExprList = evalExprRetValue curFun cenv env (List.hd valueList) in
+     if not (retType = "Text") then
               raise (Failure ("Error: Text argument expected for setText method, actual: " ^ retType))
-           else curFun, cenv, env, exprList
-        | _ -> raise (Failure ("Error: text argument expected for setText method "))
-      in    
+     else  
       let functionName = match vType with    
           "Label" -> "gtk_label_set_text"
         | "TextEntry" -> "gtk_entry_set_text" 
@@ -116,24 +205,20 @@ let setPtyCExpr curFun cenv env variable methodType valueList=
    | _ as unknown -> raise (Failure ("Error: unknown set property method " ^ unknown))  
 
 (* return a expr list of a string type argument, e.g. StrLit or getPty of string type property *)
-let stringTypeArgs curFun cenv env argExpr= match argExpr with
-     Ast.StrLit (x) -> curFun, cenv, env, [Cast.StringLit x]
-   | Ast.GetPty (v2, ptyType) ->
-        let curFun, cenv, env, retType, exprList= getPtyCExpr curFun cenv env v2 ptyType in
-        if not (retType = "Text") then
-           raise (Failure ("Error in eval string argument"))
-        else curFun, cenv, env, exprList
-    | _ -> raise (Failure ("Error in eval string argument"))
+let stringTypeArgs curFun cenv env argExpr= 
+     let curFun, cenv, env, retType, exprList = evalExprRetValue curFun cenv env argExpr in
+     if not (retType = "Text") then
+              raise (Failure ("Error: Text argument expected, actual: " ^ retType))
+     else 
+        curFun, cenv, env, exprList
 
 (* return a expr list of a numeric type argument, e.g. Lit or getPty of numeric type property *)
-let numericTypeArgs curFun cenv env argExpr = match argExpr with
-    Ast.Lit (x) -> curFun, cenv, env,  [Cast.Literal x]
-  | Ast.GetPty (v2, ptyType) ->
-      let curFun, cenv, env, retType, exprList = getPtyCExpr curFun cenv env v2 ptyType in
-        if not (retType = "Numeric") then
-           raise (Failure ("Error in eval numeric argument"))
-        else curFun, cenv, env, exprList
-  | _ -> raise (Failure ("Error in eval numeric argument"))
+let numericTypeArgs curFun cenv env argExpr = 
+     let curFun, cenv, env, retType, exprList = evalExprRetValue curFun cenv env argExpr in
+     if not (retType = "Numeric") then
+              raise (Failure ("Error: Numeric argument expected, actual: " ^ retType))
+     else 
+        curFun, cenv, env, exprList
 
 (* create expression for common argument list for creating a widget: 
 initial text, initial x postion, initial y position. Returns three expression lists *)
@@ -155,7 +240,7 @@ let rec addValues curFun cenv env exprList listName=function
        match hd with
          Ast.StrLit (x) -> curFun, cenv, env, [Cast.StringLit x]
        | Ast.GetPty (v2, ptyType) ->
-          let curFun, cenv, env, retType, exprList= getPtyCExpr curFun cenv env v2 ptyType in
+          let curFun, cenv, env, retType, exprList= getPtyCExpr curFun cenv env ptyType v2  in
           if not (retType = "Text") then
              raise (Failure ("Error value to pus in string glist is not of string type"))
           else curFun, cenv, env, exprList
@@ -193,7 +278,7 @@ let createCSyntax curFun cenv env variable containerVar widgetType valueList=
   if StringMap.mem variable env then
  		 raise (Failure ("Error: Duplicate variable " ^ variable))
   else		 
-  let containerType = getGtkTypeOrFail containerVar env in
+  let containerType = getVarTypeOrFail containerVar env in
   match widgetType with
   "Label" -> 
      if not (containerType = "Window") then
@@ -316,7 +401,7 @@ let regActionHelper cenv actionType callerType callBackFunName =
 (* eval Show expr *)
 (* returns updated curFun, updated cenv*)
 let evalShow curFun cenv env variable = 
-  let vType = getGtkTypeOrFail variable env in
+  let vType = getVarTypeOrFail variable env in
   let stmts =
   match vType with 
     "Window" -> [Cast.Expr(Cast.Call("gtk_widget_show_all", [Cast.Id(variable)]))]
@@ -325,14 +410,74 @@ let evalShow curFun cenv env variable =
   let nfdecl = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
              locals=curFun.locals ; body= append_to_list stmts curFun.body } in
   let nfuns =updateCFuns nfdecl [] cenv.funs in 
-  nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env
-    
+  nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env    
+   
 (* input curFun cenv env expr to evaluate*)
 (* return curFun cenv env return type desc *)
 let rec eval curFun cenv env= function
   Ast.Seq(e1, e2) ->
        let curFun, cenv, env, v = eval curFun cenv env e1 in
        eval curFun cenv env e2
+(* only allow this expression for e that is legal for evalExprRetValue *)       
+ | Ast.Paren (e) as exp->
+      let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env exp in
+      let stmt =Cast.Expr(List.hd cExpr)
+      in
+      let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals ; body= curFun.body @ [stmt] } in
+      let nfuns =updateCFuns curFun [] cenv.funs in 
+      curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType              
+ | Ast.Var(x) ->
+      let curFun, cenv, env, varType, cExpr = evalVar curFun cenv env x in
+      let stmts=getCStmtListFromExprList cExpr in
+      let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals ; body= append_to_list stmts curFun.body } in
+      let nfuns =updateCFuns curFun [] cenv.funs in 
+      curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String varType 
+(*define non-Gtk variable*)
+ | Ast.Asn(x, e)->
+      if StringMap.mem x env then
+ 	      raise (Failure ("Error: duplicate variable " ^ x))
+ 	  else 
+ 	     let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
+ 	     let vdecl = match retType with
+               "Char" -> Cast.VDecl(Cast.BasicType(Cast.Char), x)
+             | "Numeric" -> Cast.VDecl(Cast.BasicType(Cast.Int), x)
+             | "Text" -> Cast.OneDArrDecl(Cast.BasicType(Cast.Char), x, Cast.Literal(256))
+             | _ as unknown -> raise (Failure ("Error: unsupport primitive variable " ^ unknown))
+         in    
+ 	     let stmts = match retType with
+               "Char" -> [Cast.Expr (Cast.Assign(x, List.hd cExpr)) ]
+             | "Numeric" -> [Cast.Expr (Cast.Assign(x, List.hd cExpr)) ]
+             | "Text" -> [Cast.Expr (Cast.Call("strcpy", [Cast.Id(x); List.hd cExpr])) ]
+             | _ as unknown -> raise (Failure ("Error: unsupport primitive variable " ^ unknown))
+ 	     in
+ 	     let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals; body= append_to_list stmts curFun.body } in
+         let nfuns =updateCFuns curFun [] cenv.funs in 
+         curFun, {types=cenv.types; globals=cenv.globals @ [vdecl]; funs=nfuns}, (StringMap.add x (String retType) env), String retType    
+
+ | Ast.Puts(e) -> 
+       let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
+       let formatDef= match retType with
+            "Char" -> Cast.StringLit("%c\\n")
+          | "Numeric" -> Cast.StringLit("%d\\n")
+          | "Text" -> Cast.StringLit("%s\\n")
+          | _ as unknown -> raise (Failure ("Error: unsupport puts expression type " ^ unknown))
+       in
+       let stmt = Cast.Expr(Cast.Call("printf", [formatDef] @ cExpr)) in 
+ 	   let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals; body= curFun.body @ [stmt]} in
+       let nfuns =updateCFuns curFun [] cenv.funs in 
+       curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "Puts"       
+ | Ast.Binop(e1, op, e2)  as e->
+      let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
+      let stmts=getCStmtListFromExprList cExpr in
+      let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals ; body= append_to_list stmts curFun.body } in
+      let nfuns =updateCFuns curFun [] cenv.funs in 
+      curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType   
+                     
  | Ast.GtkMain ->
    let stmts = [Cast.Expr(Cast.Call("gtk_main", []))] in
    let nfdecl = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
@@ -346,14 +491,14 @@ let rec eval curFun cenv env= function
 (* below code intends to handle callerExpr be a expr, not just a variable, but has error now*)
 (*    let callerType, callbackFunName, callerCExprs, cenv = match callerExpr with 
        Ast.Var(x) -> 
-          let vType = getGtkTypeOrFail x env in
+          let vType = getVarTypeOrFail x env in
           vType, x, [Cast.Id (x)], cenv
        | Ast.GetPty (variable, ptyType) ->
           let retType, exprList, cenv = getPtyCExpr variable ptyType env cenv in 
           retType, (stirng_of_getPtyExpr variable ptyType), exprList, cenv
        | _ -> raise (Failure ("Error: can't register action for the given caller")) 
 *)
-let vType = getGtkTypeOrFail callerExpr env in
+let vType = getVarTypeOrFail callerExpr env in
 (* callerType: Button, ... ; callbackFunName: button1; callerCExpr: first argument in g_signal_connect function  *)
 let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (callerExpr)]
     in   
@@ -381,36 +526,31 @@ let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (cal
          let nfuns =updateCFuns nfdecl [] cenv.funs in 
          nfdecl, {types=cenv.types; globals=append_to_list vdecls cenv.globals; funs=nfuns}, env, String variable   
  
- | Ast.Lit(x) -> curFun, cenv, env, Int x
- | Ast.StrLit(x)-> curFun, cenv, env, String x
- | Ast.Char(x) -> curFun, cenv, env, Char x
- | Ast.Var(x) ->
-         if StringMap.mem x env then
-             curFun, cenv, env, StringMap.find x env
-         else raise (Failure ("Error: Undeclared identifier " ^ x))      
- | Ast.Asn(x, e)->
-         let curFun, cenv, env, value = eval curFun cenv env e in 
-             curFun, cenv, (StringMap.add x value vars), value 
- | Ast.Puts(e1) -> 
-         let curFun, cenv, env, v1= eval curFun cenv env e1 in
-         let lfdecl = curFun in
-         let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =
-             lfdecl.locals; body = (
-               let print = 
-                 ( match v1 with
-                     Int(x) -> 
-                       Cast.Expr (Call("printf", [Cast.StringLit "\"%d\\n\""; Cast.Literal x]))
-                   | String(x) -> 
-                       Cast.Expr (Call("printf", [Cast.StringLit "\"%s\\n\""; Cast.StringLit ("\"" ^ x ^ "\"")]))
-                   | Char(x) -> 
-                       Cast.Expr (Call("printf", [Cast.StringLit "\"%c\\n\""; Cast.StringLit ("'" ^ (String.make 1 x) ^ "'")])) ) in
-                 match lfdecl.body with
-                   []  ->     [print]
-                 | [x] ->  x::[print]
-                 | x   -> x @ [print] 
-           ) } in
-         let nfuns = updateCFuns nfdecl [] cenv.funs in 
-         curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, v1
+ | Ast.Lit(x) as e -> 
+   let curFun, cenv, env, retType, cExpr =evalLitTypeExpr curFun cenv env e
+   in
+   let stmts=getCStmtListFromExprList cExpr in
+   let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+          locals=curFun.locals ; body= append_to_list stmts curFun.body } in
+   let nfuns =updateCFuns curFun [] cenv.funs in 
+   curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType     
+ | Ast.StrLit(x) as e-> 
+   let curFun, cenv, env, retType, cExpr =evalLitTypeExpr curFun cenv env e
+   in
+   let stmts=getCStmtListFromExprList cExpr in
+   let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+          locals=curFun.locals ; body= append_to_list stmts curFun.body } in
+   let nfuns =updateCFuns curFun [] cenv.funs in 
+   curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType  
+ | Ast.Char(x) as e -> 
+   let curFun, cenv, env, retType, cExpr =evalLitTypeExpr curFun cenv env e
+   in
+   let stmts=getCStmtListFromExprList cExpr in
+   let curFun = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+          locals=curFun.locals ; body= append_to_list stmts curFun.body } in
+   let nfuns =updateCFuns curFun [] cenv.funs in 
+   curFun, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType   
+
  | Ast.Window (id) ->
  		 if StringMap.mem id env then
  		    raise (Failure ("Error: Duplicate variable " ^ id))
@@ -436,34 +576,15 @@ let callerType, callbackFunName, callerCExprs = vType, callerExpr, [Cast.Id (cal
                  append_to_list print cenv.globals
            ); funs=nfuns}, (StringMap.add id (String "Window") env), (String id) 
                 
- | Ast.Binop(e1, op, e2) ->
-   let curFun, cenv, env, v1 = eval curFun cenv env e1 in
-   let curFun, cenv, env, v2 = eval curFun cenv env e2 in
-       curFun, cenv, env, (match v1, v2 with
-            Int(x1), Int(x2) ->
-            Int (match op with
-                   Ast.Add -> x1 + x2
-                 | Ast.Sub -> x1 - x2
-                 | Ast.Mul -> x1 * x2
-                 | Ast.Div -> x1 / x2)
-         |  String(x1), String(x2) ->
-            String (match op with
-                   Ast.Add -> x1 ^ x2
-                 | _ -> raise (Failure 
-                     ("Error: Invalid string operation.")))
-         | _ -> raise (Failure 
-                     ("Error: Invalid operation.")) 
-        )
- 
  (* get properties of widget *)
-   | Ast.GetPty (variable, ptyType)->   
-         let curFun, cenv, env, _, exprs = getPtyCExpr curFun cenv env variable ptyType in
+   | Ast.GetPty (callerExpr, ptyType)->   
+         let curFun, cenv, env, retType, exprs = getPtyCExpr curFun cenv env ptyType callerExpr in
          let lfdecl = curFun in
          let stmts = getCStmtListFromExprList exprs in
          let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
              locals= lfdecl.locals ; body= append_to_list stmts lfdecl.body } in
          let nfuns = updateCFuns nfdecl [] cenv.funs in 
-         nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String variable
+         nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String retType
  
     | Ast.SetPty (variable, ptyType, argList)-> 
          let curFun, cenv, env, exprs = setPtyCExpr curFun cenv env variable ptyType argList in       
@@ -507,6 +628,7 @@ let _ =
  (* let oc = open_out "prog.c" in *)
  (* fprintf oc "%s\n" *) printf "%s\n" (* Append preprocessor *)
                     ( "#include <stdio.h>\n" ^
-                      "#include <gtk/gtk.h>\n" ^ listing  )                 
+                      "#include <gtk/gtk.h>\n" ^ 
+                      "#include <string.h>\n" ^ listing  )                 
                                     
                       

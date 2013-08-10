@@ -5,16 +5,25 @@
 rule token = parse 
      [' ' '\t' '\r' '\n'] { token lexbuf }
    | "(*"                 { comment lexbuf }
+         | "->"     { ARROW } 
    | '+'      { PLUS }    | '*'      { TIMES } 
-   | '-'      { MINUS }   | '/'      { DIVIDE }   
+   | '-'      { MINUS }   | '/'      { DIVIDE }
+   | "=="     { EQ }
+   | "!="     { NEQ }
+   | '<'      { LT }
+   | "<="     { LEQ }
+   | ">"      { GT }
+   | ">="     { GEQ }   
    | '('      { LPAREN }  | ')'      { RPAREN } 
    | '='      { ASSIGN }  | ','      { COMMA }
    | '.'      { DOT }
+   | '{'      { LBRACKET }
+   | '}'      { RBRACKET }
    | "puts"   { PUTS }    | "return" { RETURN }
    | eof      { EOF }
    | ';'      { SEMI }
    | "Window" { WINDOW }
-   | "getText" as lit { GETPTY (lit) }
+   | "getText" | "getSelection" as lit { GETPTY (lit) }
    | "setText" as lit { SETPTY (lit) }
    | "Label" | "Button" | "TextEntry" | "Combo" as lit { CREATE (lit) }
    | "click" as lit { ACTION (lit) }

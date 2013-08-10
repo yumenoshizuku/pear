@@ -1,7 +1,8 @@
-type operator = Add | Sub | Mul | Div
+type operator = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type expr =
-    Binop of expr * operator * expr
+     GetPty of expr * string (* expr returns a type, property name*)
+    | Binop of expr * operator * expr
     | Lit of int
     | StrLit of string
     | Char of char
@@ -9,10 +10,10 @@ type expr =
     | Seq of expr * expr
     | Asn of string * expr
     | Puts of expr
+    | Paren of expr
     | Window of string
     (* variable name, container (window) variable name, widget type and argument list *)
     | Create of string * string * string * expr list  
-    | GetPty of string * string (* var name, property name*)
     | SetPty of string * string * expr list
     (* expr(variable or getPty), action type, callback function *)
     | Action of string * string * expr 

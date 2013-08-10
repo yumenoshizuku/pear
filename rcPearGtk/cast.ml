@@ -5,16 +5,18 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 type expr =
     Literal of int
   | Id of string
-  | StringLit of string  
+  | StringLit of string 
+  | CharLit of char
   | Null
   | Unaryop of uop * expr
   | Binop of expr * op * expr
   | Assign of string * expr
   | CompoundTypeAssign of expr * expr
   | Call of string * expr list
-  | Member of string * string
+  | Member of expr * string
   | DotMember of string * string
   | OneDArrSubs of expr * expr
+  | Paren of expr
   | Noexpr
 
 type stmt =
@@ -67,11 +69,12 @@ let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
   | StringLit(s) -> "\"" ^ s ^ "\"" 
+  | CharLit(c) -> "'" ^ (String.make 1 c) ^ "'"
   | Null -> "NULL" 
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^
       (match o with
-	Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/"
+	    Add -> "+" | Sub -> "-" | Mult -> "*" | Div -> "/"
       | Equal -> "==" | Neq -> "!="
       | Less -> "<" | Leq -> "<=" | Greater -> ">" | Geq -> ">=" ) ^ " " ^
       string_of_expr e2
@@ -84,9 +87,10 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
-  | Member (structName, fieldName) -> structName ^ "->" ^ fieldName 
+  | Member (structName, fieldName) -> string_of_expr structName ^ "->" ^ fieldName 
   | DotMember (structName, fieldName) -> structName ^ "->" ^ fieldName   
   | OneDArrSubs (arrayName, index) -> (string_of_expr arrayName) ^ "[" ^ (string_of_expr index) ^ "]"
+  | Paren (e) -> "(" ^ string_of_expr e ^ ")"
 
 let rec string_of_stmt = function
     Block(stmts) ->

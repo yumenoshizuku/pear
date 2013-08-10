@@ -1,13 +1,13 @@
 return
 (
 win = Window(),
-label = win.Label(""; 100; 5),
-text1 = win.TextEntry(""; 150; 50),
-text2 = win.TextEntry(""; 150; 150),
-button = win.Button("Click me"; 250; 100),
-button.click(
-			 label.setText("Just clicked button"), text2.setText(text1.getText())),
-combo=win.Combo(200; 200; "select1"; "select2" ; "select3"), 
-win.show(),
+label = win->Label(""; 100; 5),
+text1 = win->TextEntry(""; 150; 50),
+text2 = win->TextEntry(""; 150; 150),
+button = win->Button("Click me"; 250; 100),
+combo=win->Combo(200; 200; "select1"; "select2" ; "select3"), 
+button->click(
+			 label->setText("Just clicked button"), text2->setText(combo{getSelection(){getText())),
+win->show(),
 gtkMain
 )

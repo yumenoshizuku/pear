@@ -26,9 +26,10 @@ rule token = parse
    | "while"  { WHILE }
    | ';'      { SEMI }
    | "Window" { WINDOW }
-   | "getText" | "getSelection" as lit { GETPTY (lit) }
-   | "setText" as lit { SETPTY (lit) }
-   | "Label" | "Button" | "TextEntry" | "Combo" as lit { CREATE (lit) }
+   | "getText" | "getSelection" | "isSelected" | "getElement" as lit { GETPTY (lit) }
+   | "setText" | "setSelected" as lit { SETPTY (lit) }
+   | "Label" | "Button" | "TextEntry" 
+   | "Combo" | "CheckBox" | "RadioButtonGroup" as lit { CREATE (lit) }
    | "click" as lit { ACTION (lit) }
    | "show"  { SHOW }
    | "gtkMain" { GTKMAIN }

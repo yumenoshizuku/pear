@@ -1,8 +1,8 @@
 %{ open Ast %}
 
-%token LPAREN RPAREN COMMA DOT
+%token LPAREN RPAREN LBRACE RBRACE COMMA DOT
 %token PLUS MINUS TIMES DIVIDE ASSIGN
-%token EQ NEQ LT LEQ GT GEQ
+%token EQ NEQ LT LEQ GT GEQ INT
 %token RETURN IF ELSE FOR WHILE
 %token <int> LITERAL
 %token <string> STRLIT
@@ -11,8 +11,6 @@
 %token <string> OBJECT
 %token EOF
 
-%nonassoc NOCALL
-%nonassoc NOBLOCK
 %nonassoc NOELSE
 %nonassoc ELSE
 %right ASSIGN
@@ -60,7 +58,7 @@ stmt_list:
 stmt:
     expr COMMA { Expr($1) }
   | RETURN expr COMMA { Return($2) }
-  | NOBLOCK LPAREN stmt_list RPAREN { Block(List.rev $3) }
+  | LBRACE stmt_list RBRACE { Block(List.rev $2) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
   | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt

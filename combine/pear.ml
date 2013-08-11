@@ -134,7 +134,35 @@ let run (vars, objs) =
            (* Return the new environment *)
 	   ((Int 0), (cstrs, cvars, ncenv)), env
       | (Ast.Call(f, actuals), cenv) ->
-	  let odecl =
+		let (st, gl, fs) = cenv in
+		let (locals, globals) = env in
+  		if not ((NameMap.mem f locals) or (NameMap.mem f globals)) then
+ 		 raise (Failure ("Error: Unknown function " ^ f))
+  		else match (List.hd actuals, List.hd (List.tl actuals)) with
+			(Ast.Id(w), Ast.StrLit(s)) ->
+			if ((NameMap.mem w locals) or (NameMap.mem w globals)) then ( let nfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = f;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), "ptr")];
+        locals = [];
+        body = [
+		match ((if NameMap.mem f locals then NameMap.find f locals else NameMap.find f globals), (if NameMap.mem w locals then NameMap.find w locals else NameMap.find w globals), Ast.StrLit(s)) with
+		  (String("Display"), String("Label"), Ast.StrLit(s)) ->
+	(Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id w]); StrLit s])))
+		
+		| _ -> raise (Failure ("Error: Callback function not supported."))
+		];}
+		in let ncenv = 
+           ( match fs with
+               []  ->     []
+             | [x] -> [nfdecl] @ [x]
+             | x   -> [nfdecl] @ x)
+	in (Int 0, (st, gl, ncenv))), env
+
+	 else raise (Failure ("Error: Unknown widget " ^ w))
+
+		| _ -> let odecl =
 	    try NameMap.find f obj_decls
 	    with Not_found -> raise (Failure ("undefined function " ^ f))
 	  in
@@ -267,9 +295,9 @@ let run (vars, objs) =
 		| (_, "ClickQuit", _) ->
 	[Cast.Expr (Call("g_signal_connect",
 	[Call("G_OBJECT",[Id id]); StrLit "activate"; Call("G_CALLBACK",[ConstLit("gtk_main_quit")]); Null]))]
-		| (_, "ClickDisplay", [Ast.Id wid]) ->
+		| (_, "ClickDisplay", [Ast.Call (fid, [Ast.Id wid; _])]) ->
 	[Cast.Expr (Call("g_signal_connect",
-	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[ConstLit(id ^ "display")]); Id wid]))]
+	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
 		| (_, "BorderWidth", [Ast.Literal w]) ->
 	[Cast.Expr (Call("gtk_container_set_border_width",
 	[Call("GTK_CONTAINER",[Id id]); Literal w]))]
@@ -322,6 +350,7 @@ let run (vars, objs) =
 				fname = lfdecl.fname; 
 				formals = lfdecl.formals; 
              			locals= (
+	if (obj = "Display") then lfdecl.locals else (
                let print =
                  (Cast.VDecl (Cast.PointerType (Cast.GtkWidget), id))   
 				 in
@@ -329,7 +358,7 @@ let run (vars, objs) =
                    []  ->     [print]
                  | [x] ->  x::[print]
                  | x   -> x @ [print] 
-           ) ; body= (
+           )) ; body= (
                let print = 
 		(match obj with
 		  "Window" -> 
@@ -363,6 +392,7 @@ let run (vars, objs) =
 	[Cast.Expr (Assign (id, (Call ("gtk_menu_new", []))))]
 		| "Menuitem" ->
 	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new", []))))]
+		| "Display" -> []
 		| _  -> raise (Failure ("Error: Object not supported."))) in
                  match lfdecl.body with
                    []  ->     print

@@ -1,6 +1,6 @@
 %{ open Ast %}
 
-%token LPAREN RPAREN LBRACE RBRACE COMMA
+%token LPAREN RPAREN COMMA
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
@@ -51,9 +51,8 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    NOCALL OBJECT ID ASSIGN expr COMMA 
-      { $2
-        }
+    NOCALL OBJECT ID COMMA { $2 }
+    | NOCALL OBJECT ID ASSIGN expr COMMA   { $2 }
 
 stmt_list:
     /* nothing */  { [] }
@@ -89,7 +88,7 @@ expr:
   | expr GT     expr { Binop($1, Greater,  $3) }
   | expr GEQ    expr { Binop($1, Geq,   $3) }
   | ID ASSIGN expr   { Assign($1, $3) }
-  | OBJECT LPAREN actuals_opt RPAREN { Call($1, $3) } /* expr loops */
+  | OBJECT LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:
@@ -98,4 +97,4 @@ actuals_opt:
 
 actuals_list:
     expr                    { [$1] }
-  | actuals_list COMMA expr { $3 :: $1 } /* from here */
+  | actuals_list COMMA expr { $3 :: $1 }

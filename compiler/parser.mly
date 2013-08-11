@@ -1,6 +1,6 @@
 %{ open Ast %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
+%token LPAREN RPAREN LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
 %token RETURN IF ELSE FOR WHILE
@@ -12,6 +12,7 @@
 %token EOF
 
 %nonassoc NOCALL
+%nonassoc NOBLOCK
 %nonassoc NOELSE
 %nonassoc ELSE
 %right ASSIGN
@@ -31,7 +32,7 @@ program:
  | program fdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   OBJECT LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+   OBJECT LPAREN formals_opt RPAREN LPAREN vdecl_list stmt_list RPAREN
      { { oname = $1;
 	 oformals = $3;
 	 olocals = List.rev $6;
@@ -50,7 +51,7 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    NOCALL OBJECT ID ASSIGN expr SEMI 
+    NOCALL OBJECT ID ASSIGN expr COMMA 
       { $2
         }
 
@@ -59,12 +60,12 @@ stmt_list:
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    expr SEMI { Expr($1) }
-  | RETURN expr SEMI { Return($2) }
-  | LBRACE stmt_list RBRACE { Block(List.rev $2) }
+    expr COMMA { Expr($1) }
+  | RETURN expr COMMA { Return($2) }
+  | NOBLOCK LPAREN stmt_list RPAREN { Block(List.rev $3) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
-  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
+  | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
 

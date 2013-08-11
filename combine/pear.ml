@@ -90,7 +90,7 @@ let run (vars, objs) =
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
 
-      | (Ast.Call("print", [e]), cenv) ->
+      | (Ast.Call("puts", [e]), cenv) ->
 	  let (v, (cstrs, cvars, cfuncs)), env = eval env (e, cenv) in
 
           (* Get main method (last function declaration) *)
@@ -310,7 +310,7 @@ let run (vars, objs) =
 	in (env, (s, g, ncenv))
 
 (* Create is used to create gtk widgets. May also be combined to the "Set" statement. Which would be better?*)
-      | Ast.Create(obj, id) -> 
+      | Ast.Create(id, obj) -> 
 	let (s, g, f) = cenv in
               let (locals, globals) = env in 
   		if NameMap.mem id locals or NameMap.mem id globals then

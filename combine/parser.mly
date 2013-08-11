@@ -51,9 +51,7 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    NOCALL OBJECT ID ASSIGN expr COMMA 
-      { $2
-        }
+    OBJECT ID COMMA { $2 } 
 
 stmt_list:
     /* nothing */  { [] }
@@ -68,7 +66,7 @@ stmt:
   | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
-  | OBJECT ID COMMA { Create($1, $2) }
+  | ID DOT OBJECT COMMA { Create($1, $3) }
   | ID DOT OBJECT LPAREN actuals_opt RPAREN COMMA { Set($1, $3, $5) }
 
 expr_opt:
@@ -91,7 +89,7 @@ expr:
   | expr GT     expr { Binop($1, Greater,  $3) }
   | expr GEQ    expr { Binop($1, Geq,   $3) }
   | ID ASSIGN expr   { Assign($1, $3) }
-  | OBJECT LPAREN actuals_opt RPAREN { Call($1, $3) } /* expr loops */
+  | ID LPAREN actuals_opt RPAREN { Call($1, $3) } /* expr loops */
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:

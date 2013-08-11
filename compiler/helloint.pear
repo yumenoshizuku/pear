@@ -1,14 +1,5 @@
-return
-(
-vim = "hi",
-var = 333,
-puts(22+7),
-puts(var+2),
-puts('z'),
-puts(vim+"ho")
+Int id,
+Main() (
+    String whoa,
+    puts("hi"),
 )
-
-(*,
-num = (2*7),
-puts(num+3)
-*)

@@ -89,7 +89,7 @@ let run (vars, objs) =
 	           (Int x, cenv), (locals, NameMap.add var v globals)
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
-      | (Ast.Call("print", [e]), cenv) ->
+      | (Ast.Call("puts", [e]), cenv) ->
 	  let (v, (cvars, cfuncs)), env = eval env (e, cenv) in
 
           (* Get main method (last function declaration) *)
@@ -226,7 +226,7 @@ let run (vars, objs) =
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
-      let env, cenv = call (NameMap.find "main" obj_decls) [] globals in
+      let env, cenv = call (NameMap.find "Main" obj_decls) [] globals in
       let cvdecls, cfdecls = cenv in
       let lfdecl = List.hd (List.rev cfdecls) in
       let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =

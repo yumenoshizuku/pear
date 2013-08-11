@@ -10,7 +10,8 @@ rule token = parse
 | ')'      { RPAREN }
 
 | ','      { COMMA }
-| '.'      { DOT }
+(*| '.'      { DOT } *)
+| "int" { INT }
 
 | '+'      { PLUS }
 | '-'      { MINUS }

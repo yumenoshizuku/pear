@@ -8,6 +8,8 @@ rule token = parse
 | "(*"     { comment lexbuf }           (* Comments *)
 | '('      { LPAREN }
 | ')'      { RPAREN }
+| '['      { LBRACE }
+| ']'      { RBRACE }
 
 | ','      { COMMA }
 (*| '.'      { DOT } *)

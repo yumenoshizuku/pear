@@ -1,5 +1,7 @@
 Int id,
 Main() (
     String whoa,
-    puts("hi"),
+    id = 4,
+    puts(id),
+    [puts("hi"),puts("ho"),]
 )

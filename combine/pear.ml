@@ -144,7 +144,7 @@ let run (vars, objs) =
 		returnType = BasicType(Cast.Void);
         fname = f;
         formals = [FormalDecl (PointerType (GtkWidget), "widget");
-   		   FormalDecl (BasicType (GPointer), "ptr")];
+   		   FormalDecl (BasicType (GPointer), w)];
         locals = [];
         body = [
 		match ((if NameMap.mem f locals then NameMap.find f locals else NameMap.find f globals), (if NameMap.mem w locals then NameMap.find w locals else NameMap.find w globals), Ast.StrLit(s)) with
@@ -220,8 +220,90 @@ let run (vars, objs) =
 	let (s, g, f) = cenv in
               let (plocals, pglobals) = env in 
   		if not (NameMap.mem id plocals or NameMap.mem id pglobals) then
- 		 raise (Failure ("Error: Unknown variable " ^ id))
-  		else
+ 	(
+		let var = ((NameMap.add id (String obj) plocals), pglobals) in 
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = {  returnType = lfdecl.returnType; 
+				fname = lfdecl.fname; 
+				formals = lfdecl.formals; 
+             			locals= (
+		if (obj = "Display") then lfdecl.locals else (
+               let print =
+                 (Cast.VDecl (Cast.PointerType (Cast.GtkWidget), id))   
+				 in
+                 match lfdecl.locals with
+                   []  ->     [print]
+                 | [x] ->  x::[print]
+                 | x   -> x @ [print] 
+           )) ; body= (
+               let print = 
+		(match (obj, args) with
+		  ("Window", []) -> 
+	[Cast.Expr (Assign (id, (Call ("gtk_window_new", [ConstLit ("GTK_WINDOW_TOPLEVEL")])))); 
+	Cast.Expr(Call("g_signal_connect",[Id id; StrLit "destroy" ; Call("G_CALLBACK",[ConstLit ("gtk_main_quit")]); Null]))]
+		| ("Fixed", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_fixed_new", []))))]
+		| ("Frame", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_frame_new", [Null]))))]
+		| ("Grid", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_grid_new", []))))]
+		| ("Vbox", [Ast.Id "hom"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Vboxhom", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Vbox", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+		| ("Box", [Ast.Id "vertical"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+		| ("Box", [Ast.Id "horizontal"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+		| ("Hbox", [Ast.Id "hom"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Hboxhom", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Hbox", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+        | ("Button", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_button_new", []))))]
+		| ("Button", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_button_new_with_label", [StrLit s]))))]
+		| ("Label", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [Null]))))]
+		| ("Checkbox", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new", []))))]	
+		| ("Checkbox", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new_with_label", [StrLit s]))))]	
+		| ("Menubar", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_bar_new", []))))]
+		| ("Menu", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_new", []))))]
+		| ("Menuitem", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new", []))))]
+		| ("Menuitem", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new_with_label", [StrLit s]))))]
+		| ("Display", []) -> []
+		| _  -> raise (Failure ("Error: Object not supported."))) in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print 
+           )} in
+         let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [nfdecl]
+             | x   -> List.rev([nfdecl]@(List.tl (List.rev x)))) in 
+              (var, (s, g, ncenv))
+)
+  		else(
          let lfdecl = List.hd (List.rev f) in
 		 let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
              locals= lfdecl.locals; body= (
@@ -334,77 +416,9 @@ let run (vars, objs) =
            ( match f with
                []  ->     []
              | [x] -> [nfdecl]
-             | x   -> x @ [nfdecl])
-	in (env, (s, g, ncenv))
+             | x   -> List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (s, g, ncenv)))
 
-(* Create is used to create gtk widgets. May also be combined to the "Set" statement. Which would be better?*)
-      | Ast.Create(id, obj) -> 
-	let (s, g, f) = cenv in
-              let (locals, globals) = env in 
-  		if NameMap.mem id locals or NameMap.mem id globals then
- 		 raise (Failure ("Error: Duplicate variable " ^ id))
-  		else
-              let var = ((NameMap.add id (String obj) locals), globals) in 
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = {  returnType = lfdecl.returnType; 
-				fname = lfdecl.fname; 
-				formals = lfdecl.formals; 
-             			locals= (
-	if (obj = "Display") then lfdecl.locals else (
-               let print =
-                 (Cast.VDecl (Cast.PointerType (Cast.GtkWidget), id))   
-				 in
-                 match lfdecl.locals with
-                   []  ->     [print]
-                 | [x] ->  x::[print]
-                 | x   -> x @ [print] 
-           )) ; body= (
-               let print = 
-		(match obj with
-		  "Window" -> 
-	[Cast.Expr (Assign (id, (Call ("gtk_window_new", [ConstLit ("GTK_WINDOW_TOPLEVEL")])))); 
-	Cast.Expr(Call("g_signal_connect",[Id id; StrLit "destroy" ; Call("G_CALLBACK",[ConstLit ("gtk_main_quit")]); Null]))]
-		| "Fixed" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_fixed_new", []))))]
-		| "Frame" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_frame_new", [Null]))))]
-		| "Grid" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_grid_new", []))))]
-		| "Vboxhom" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
-		| "Vbox" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
-		| "Hboxhom" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
-		| "Hbox" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
-        | "Button" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_button_new", []))))]
-		| "Label" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [Null]))))]
-		| "Menubar" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_bar_new", []))))]
-		| "Menu" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_new", []))))]
-		| "Menuitem" ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new", []))))]
-		| "Display" -> []
-		| _  -> raise (Failure ("Error: Object not supported."))) in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print 
-           )} in
-         let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> [nfdecl]
-             | x   -> x @ [nfdecl]) in 
-              (var, (s, g, ncenv))
 
     in
 
@@ -461,7 +475,7 @@ let run (vars, objs) =
       ( match cfdecls with
           []  ->     []
         | [x] ->     [nfdecl]
-        | x   -> x @ [nfdecl]) in  
+        | x   -> List.rev([nfdecl]@(List.tl (List.rev x)))) in  
       let listing = Cast.string_of_program (csdecls, cvdecls, ncenv) in
 
       (* Write translation to prog.c *)

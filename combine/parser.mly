@@ -64,7 +64,6 @@ stmt:
   | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
-  | ID DOT OBJECT COMMA { Create($1, $3) }
   | ID DOT OBJECT LPAREN actuals_opt RPAREN COMMA { Set($1, $3, $5) }
 
 expr_opt:

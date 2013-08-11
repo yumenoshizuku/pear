@@ -5,7 +5,7 @@ type op = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 type expr =
     Literal of int
   | StrLit of string
-  | Character of char
+  | CharLit of char
   | Id of string
   | Binop of expr * op * expr
   | Assign of string * expr
@@ -42,9 +42,3 @@ type obj_decl = {
 
 type program = string list * obj_decl list
 
-(* Formals carry both their types and their values *)
-(*
-type formal =
-    FormalType of string
-    | FormalVar of expr
-    *)

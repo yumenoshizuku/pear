@@ -1,9 +1,9 @@
 %{ open Ast %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA DOT
+%token LPAREN RPAREN COMMA DOT
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR WHILE INT
+%token RETURN IF ELSE FOR WHILE
 %token <int> LITERAL
 %token <string> STRLIT
 %token <char> CHAR
@@ -11,6 +11,8 @@
 %token <string> OBJECT
 %token EOF
 
+%nonassoc NOCALL
+%nonassoc NOBLOCK
 %nonassoc NOELSE
 %nonassoc ELSE
 %right ASSIGN
@@ -30,7 +32,7 @@ program:
  | program fdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+   OBJECT LPAREN formals_opt RPAREN LPAREN vdecl_list stmt_list RPAREN
      { { oname = $1;
 	 oformals = $3;
 	 olocals = List.rev $6;
@@ -49,23 +51,23 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    INT ID SEMI   { $2 }
+    OBJECT ID COMMA { $2 } 
 
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    expr SEMI { Expr($1) }
-  | RETURN expr SEMI { Return($2) }
-  | LBRACE stmt_list RBRACE { Block(List.rev $2) }
+    expr COMMA { Expr($1) }
+  | RETURN expr COMMA { Return($2) }
+  | NOBLOCK LPAREN stmt_list RPAREN { Block(List.rev $3) }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
-  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
+  | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
-  | OBJECT ID SEMI { Create($1, $2) }
-  | ID DOT OBJECT LPAREN actuals_opt RPAREN SEMI { Set($1, $3, $5) }
+  | ID DOT OBJECT COMMA { Create($1, $3) }
+  | ID DOT OBJECT LPAREN actuals_opt RPAREN COMMA { Set($1, $3, $5) }
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -74,11 +76,11 @@ expr_opt:
 expr:
     LITERAL          { Literal($1) }
   | STRLIT           { StrLit($1) }
-  | CHAR             { Character($1) }
+  | CHAR             { CharLit($1) }
   | ID               { Id($1) }
   | expr PLUS   expr { Binop($1, Add,   $3) }
   | expr MINUS  expr { Binop($1, Sub,   $3) }
-  | expr TIMES  expr { Binop($1, Mul,  $3) }
+  | expr TIMES  expr { Binop($1, Mul,   $3) }
   | expr DIVIDE expr { Binop($1, Div,   $3) }
   | expr EQ     expr { Binop($1, Equal, $3) }
   | expr NEQ    expr { Binop($1, Neq,   $3) }
@@ -87,7 +89,7 @@ expr:
   | expr GT     expr { Binop($1, Greater,  $3) }
   | expr GEQ    expr { Binop($1, Geq,   $3) }
   | ID ASSIGN expr   { Assign($1, $3) }
-  | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
+  | ID LPAREN actuals_opt RPAREN { Call($1, $3) } /* expr loops */
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:
@@ -96,4 +98,4 @@ actuals_opt:
 
 actuals_list:
     expr                    { [$1] }
-  | actuals_list COMMA expr { $3 :: $1 }
+  | actuals_list COMMA expr { $3 :: $1 } /* from here */

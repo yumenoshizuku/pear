@@ -19,6 +19,7 @@ type primitive =
     Int of int
   | String of string
   | Char of char
+  | Pointer of string
 
 (* Create a string map to store primitive types *)
 module NameMap = Map.Make(struct
@@ -49,6 +50,7 @@ let run (vars, objs) =
 	(Ast.Literal(i), cenv) -> (Int i, cenv), env
       | (Ast.StrLit(i), cenv) -> (String i, cenv), env
       | (Ast.Char(i), cenv) -> (Char i, cenv), env
+      | (Ast.Pointer(i), cenv) -> (Pointer i, cenv), env
 
         (* Other expressions *)
       | (Ast.Noexpr, cenv) -> (Int 1, cenv), env (* must be non-zero for the for loop predicate *)
@@ -83,10 +85,10 @@ let run (vars, objs) =
 	  let (v, cenv), (locals, globals) = eval env (e, cenv) in
             (match v with
                Int(x) ->
-	         if NameMap.mem var locals then
-	           (Int x, cenv), (NameMap.add var v locals, globals)
-	         else if NameMap.mem var globals then
-	           (Int x, cenv), (locals, NameMap.add var v globals)
+	         if NameMap.mem ("Int " ^ var) locals then
+	          (*return Int 1? since assign succeeds?*) (Int x, cenv), (NameMap.add ("Int " ^ var) v locals, globals)
+	         else if NameMap.mem ("Int " ^ var) globals then
+	           (*Make decision on Int 1 vs x*) (Int x, cenv), (locals, NameMap.add ("Int " ^ var) v globals)
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("puts", [e]), cenv) ->
@@ -108,8 +110,12 @@ let run (vars, objs) =
                       Cast.Expr (Call("printf", [Cast.StrLit "\"%d\\n\""; Cast.Literal x]))
                   | String(x) -> 
                       Cast.Expr (Call("printf", [Cast.StrLit "\"%s\\n\""; Cast.StrLit ("\"" ^ x ^ "\"")]))
+                  | Pointer(x) -> 
+                      Cast.Expr (Call("printf", [Cast.StrLit "\"%s\\n\""; Cast.StrLit ("\"" ^ x ^ "\"")]))
                   | Char(x) -> 
                       Cast.Expr (Call("printf", [Cast.StrLit "\"%c\\n\""; Cast.StrLit ("'" ^ (String.make 1 x) ^ "'")])) ) in
+
+
                 (* Append to the end of the body *)
                 match lfdecl.body with
                   []  ->     [print]
@@ -128,7 +134,9 @@ let run (vars, objs) =
           (match v with
              Int(x) -> print_endline (string_of_int x)
            | String(x) -> print_endline x
+           | Pointer(x) -> print_endline x
            | Char(x) -> print_endline (String.make 1 x));
+
 
            (* Return the new environment *)
 	   ((Int 0), (cvars, ncenv)), env

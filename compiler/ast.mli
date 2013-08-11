@@ -7,9 +7,11 @@ type expr =
   | StrLit of string
   | Char of char
   | Id of string
+  | Pointer of string
  (*| ChildId of string * string*) (* Get child object *)
   | Binop of expr * op * expr
   | Assign of string * expr
+  (*| AssignObj of string * string * expr list*)
  (* | ChildAssign of string * string * expr*)  (* Assign child object's value *)
   | Call of string * expr list
   | Noexpr

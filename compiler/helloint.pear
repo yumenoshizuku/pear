@@ -1,7 +1,13 @@
 Int id,
+Foo(bar) (
+    puts("heya"),
+    return 2+3,
+)
 Main() (
     String whoa,
+    Int boo,
+    boo = 2,
     id = 4,
-    puts(id),
+    (*boo(3),*)
     [puts("hi"),puts("ho"),]
 )

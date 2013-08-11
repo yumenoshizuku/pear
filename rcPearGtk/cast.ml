@@ -59,12 +59,6 @@ type program =
    funs : func_decl list;
 }
 
-
-
-
-
-
-
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
@@ -158,4 +152,5 @@ let string_of_program program =
   String.concat "" (List.map string_of_sdef program.types) ^ "\n" ^
   String.concat "" (List.map string_of_vdecl program.globals) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl program.funs)
+  ns)
   

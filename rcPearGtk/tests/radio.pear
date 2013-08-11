@@ -14,12 +14,4 @@ button.click(
 ),
 win.show(),
 gtkMain
-}"a is still greater than b"), puts(a))
-	else
-		(label->setText("b is greater than a")),
-	while(a>b)
-	 	(a=a-1,puts(a-b))	
-	),
-win.show(),
-gtkMain
 }

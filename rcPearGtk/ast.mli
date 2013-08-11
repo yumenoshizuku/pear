@@ -1,7 +1,7 @@
 type operator = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type expr =
-     GetPty of expr * string (* expr returns a type, property name*)
+     GetPty of expr * string * expr list
     | Binop of expr * operator * expr
     | Lit of int
     | StrLit of string
@@ -22,8 +22,11 @@ type expr =
     | If of expr * expr * expr
     | IfNoElse of expr * expr
     | While of expr * expr
+    | NoExpr
 
 type stmt =
     Expr of expr
     | Return of expr   
+
+rn of expr   
 

@@ -1,0 +1,21 @@
+return {
+win = Window(),
+newStr="Just Clicked button",
+label = win.Label(""; 100; 5),
+button = win.Button("Click me"; 250; 100),
+check1=win.CheckBox("Check1"; 150; 50),
+check2=win.CheckBox("Check2"; 150; 150),
+button.click (
+	if(check1->isSelected())
+	(
+		label->setText("check box is selected")
+	)
+	else
+	(
+		label->setText("check box is not selected")
+	),
+	check2->setSelected(check1->isSelected())	
+	),
+win.show(),
+gtkMain
+}

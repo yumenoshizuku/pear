@@ -37,7 +37,7 @@ let cMain = {
    Cast.FormalDecl (Cast.PointerToPointerType (Cast.Char), "argv")];
    locals = [];
    body = [];
-}   
+} 
 
 let cenv= {types=[]; globals=[]; funs=[cMain] } 
 
@@ -56,59 +56,18 @@ let gtkNameOfType vType = match vType with
      "Label" -> "GTK_LABEL"
    | "TextEntry" -> "GTK_ENTRY"  
    | "Combo" -> "GTK_COMBO"
-   | _ -> raise (Failure ("Error: unknown gtk type or not gtk type" ^ vType))   
+   (* toggle button is the 'super' type *)
+   | "CheckBox" -> "GTK_TOGGLE_BUTTON"
+   | "RadioButton" -> "GTK_RADIO_BUTTON"
+   (*there is no radio button group in gtk *)
+   | "RadioButtonGroup" -> "RadioButtonGroup"
+   | _ -> raise (Failure ("Error: unknown gtk type or not gtk type " ^ vType))   
 
 let stirng_of_getPtyExpr variable methodType = 
    variable ^ methodType
  
 (* every 'eval' function should take curFun, cenv and env as argument and return them, 
- because they all may have changed after the evaluation *)
-
-(* input methodType, caller expr *)
-(* return C expr list of get operation (usually one expr) *)
-let getPtyHelper curFun cenv env methodType vType callerCExprList=  
-  match methodType with 
-  "getText" -> 
-      let functionName = match vType with    
-         "Label" -> "gtk_label_get_text"
-       | "TextEntry" -> "gtk_entry_get_text" 
-       | _ -> raise (Failure ("Error: can't get text of type " ^ vType))        
-     in
-      let exprs = [ Cast.Call (functionName, 
-                        [Cast.Call (gtkNameOfType vType, callerCExprList)
-                        ])]
-      in curFun, cenv, env, "Text", exprs
-  | "getSelection" -> 
-       let exprs =
-       match vType with    
-         "Combo" -> 
-           [Cast.Member (Cast.Call (gtkNameOfType vType, callerCExprList), "entry")]
-           (*
-           let comboSelectionExpr =
-           match List.hd callerCExprList with
-             Cast.Id (var) -> [Cast.Member (Cast.Call (gtkNameOfType vType, [Cast.Id(var)]), "entry")]
-             | _ -> raise (Failure ("Error: select selection of combo must apply on variable expression "))
-           in
-           comboSelectionExpr  
-           *)
-         | _ -> raise (Failure ("Error: can't get selection of type " ^ vType))        
-     in
-     curFun, cenv, env, "TextEntry", exprs      
-  | _ as unknown -> raise (Failure ("Error: unknown get property method " ^ unknown))   
-
-(* arguments: property type, caller expr *)
-(* returns: return type ("Text", "Numeric", or widget type), C expr list of the get operation (looks it is always one expr) *)
-(* Note that we need update cenv when the getter is get a widget in a container, we define a function to get the widget, 
-and the C expr list calls this function *)
-let rec getPtyCExpr curFun cenv env methodType = function
-     Ast.Var(variable) ->
-       let vType = getVarTypeOrFail variable env in
-       let callerCExpr = [Cast.Id (variable)] in
-       getPtyHelper curFun cenv env methodType vType callerCExpr
-   | Ast.GetPty (aCallerExpr, aMethodType) ->
-       let curFun, cenv, env, retType, callerCExpr = getPtyCExpr curFun cenv env aMethodType aCallerExpr in
-       getPtyHelper curFun cenv env methodType retType callerCExpr
-   | _ -> raise (Failure ("Error: unsupported expression type to get property "))   
+ because they all may have changed after the evaluation *)  
 
 (* evaluate a Var expression *)
 (* input varName *)
@@ -129,18 +88,17 @@ let evalLitTypeExpr curFun cenv env litExpr = match litExpr with
 (* evaulate expression that returns something *)
 (* all literal expr, Var, GetPty Binop are valid expression here *)
 (* input: expr; return retType, c expr list of this operation *)
-let rec evalExprRetValue curFun cenv env =function
+let rec evalPrimitiveExprRetValue curFun cenv env =function
      Ast.Var(x) -> evalVar curFun cenv env x
-   | Ast.GetPty (callerExpr, methodType) -> getPtyCExpr curFun cenv env methodType callerExpr
    | Ast.Lit(x) as e-> evalLitTypeExpr curFun cenv env e
    | Ast.StrLit(x) as e-> evalLitTypeExpr curFun cenv env e
    | Ast.Char(x) as e-> evalLitTypeExpr curFun cenv env e
    | Ast.Paren(e) ->
-         let curFun, cenv, env, retType, cExpr = evalExprRetValue curFun cenv env e in
+         let curFun, cenv, env, retType, cExpr = evalPrimitiveExprRetValue curFun cenv env e in
          curFun, cenv, env, retType, [Cast.Paren(List.hd cExpr)]
    | Ast.Binop (e1, op, e2) ->
-     let curFun, cenv, env, e1Type, e1CExpr = evalExprRetValue curFun cenv env e1 in
-     let curFun, cenv, env, e2Type, e2CExpr = evalExprRetValue curFun cenv env e2 in
+     let curFun, cenv, env, e1Type, e1CExpr = evalPrimitiveExprRetValue curFun cenv env e1 in
+     let curFun, cenv, env, e2Type, e2CExpr = evalPrimitiveExprRetValue curFun cenv env e2 in
      let retType, castOp=
      match op with
       (* TODO not trival to support + for strings, since C doesn't support it *)
@@ -178,6 +136,145 @@ let rec evalExprRetValue curFun cenv env =function
       curFun, cenv, env, retType, [Cast.Binop (List.hd e1CExpr, castOp, List.hd e2CExpr)]                                                    
    | _ -> raise (Failure ("Error: not a type that returns a value "))      
 
+(* input: updated function, passed funs in list, remaining funs in list *)      
+(* return: updated function list *)
+let rec updateCFuns updatedFun passedFuns =function
+    [] -> passedFuns
+  | hd :: tl ->
+    if hd.fname = updatedFun.fname then
+       passedFuns @ [updatedFun] @ tl
+    else 
+       updateCFuns updatedFun (passedFuns @ [hd]) tl    
+
+let rec getExistingFunOrNew funName retDecl formals= function
+    [] -> {
+   		returnType = retDecl;
+    	fname = funName;
+   		formals = formals;
+   		locals = [];
+   		body = [];
+		} 
+  | hd :: tl ->
+    if hd.fname = funName then
+       hd
+    else 
+       getExistingFunOrNew funName retDecl formals tl   
+
+(*return function name of get radio button group selection *)
+let getRadioButtonSelectionFunction curFun cenv env varName sizeVarName=  
+	let funRecord=getExistingFunOrNew (varName ^ "Selection") (Cast.PointerType(Cast.GtkWidget)) [] cenv.funs in
+  	if funRecord.body =[] then
+  	(* create the function *)
+  		let localDecl= Cast.VDecl(Cast.BasicType(Cast.Int), "i") in
+  		let forBody =[
+  			Cast.If(
+  			Cast.Call("gtk_toggle_button_get_active", [Cast.Call("GTK_TOGGLE_BUTTON", [Cast.OneDArrSubs(Cast.Id(varName),Cast.Id("i"))])]),
+  			Cast.Return(Cast.OneDArrSubs(Cast.Id(varName),Cast.Id("i"))),
+  			Block([])
+  			)] in
+  		let stmts = [
+  		Cast.For(Cast.Assign("i", Cast.Literal(0)),
+  			Cast.Binop(Cast.Id("i"),Cast.Less,Cast.Id(sizeVarName)),
+  			Cast.Assign("i", Cast.Binop(Cast.Id("i"),Cast.Add,Cast.Literal(1))),
+  			Cast.Block(forBody)
+  			)
+  		] in
+        let newFunRecord = { returnType = funRecord.returnType; fname = funRecord.fname; formals = funRecord.formals; 
+             locals=[localDecl] ; body= stmts } in
+         curFun, {types=cenv.types; globals=cenv.globals; funs=newFunRecord :: cenv.funs}, env, funRecord.fname         
+  	else
+        curFun, cenv, env, funRecord.fname
+
+let getRadioButtonGroupSizeVarName radioButtonGroupVarName =
+  radioButtonGroupVarName ^ "Size" 
+
+(* input methodType, caller expr, arg list *)
+(* return C expr list of get operation (usually one expr) *)
+let getPtyHelper curFun cenv env methodType vType callerCExprList argList=  
+  match methodType with 
+  "getText" -> 
+     if not (List.length argList = 0) && not (List.hd argList=Ast.NoExpr) then
+        raise (Failure ("Error: method getText can't have argument"))
+     else   
+      let functionName, cGtkName = match vType with    
+         "Label" -> "gtk_label_get_text", "GTK_LABEL"
+       | "TextEntry" -> "gtk_entry_get_text", "GTK_ENTRY"
+       | "Button" -> "gtk_button_get_label", "GTK_BUTTON" 
+ 	   | "CheckBox" -> "gtk_button_get_label", "GTK_BUTTON"
+ 	   | "RadioButton"-> "gtk_button_get_label", "GTK_BUTTON"
+       | _ -> raise (Failure ("Error: can't get text of type " ^ vType))        
+      in
+      let exprs = [ Cast.Call (functionName, 
+                        [Cast.Call (cGtkName, callerCExprList)
+                        ])]
+      in curFun, cenv, env, "Text", exprs
+  | "getSelection" -> 
+     if not (List.length argList = 0) && not (List.hd argList=Ast.NoExpr) then
+        raise (Failure ("Error: method getSelection can't have argument "))
+     else    
+       let curFun, cenv, env, exprs, retType=
+       match vType with    
+         "Combo" -> 
+           curFun, cenv, env, [Cast.Member (Cast.Call (gtkNameOfType vType, callerCExprList), "entry")], "TextEntry"
+         | "RadioButtonGroup" ->
+            (*only support Cast.Id type caller expression*)
+         	let varName, sizeVarName = match List.hd callerCExprList with
+         	Cast.Id(var) -> var, getRadioButtonGroupSizeVarName var
+         	| _ ->raise (Failure ("Error: only support Cast.Id type caller expression in ration button get selection"))
+            in 
+            let curFun, cenv, env, getSelectionFunName= getRadioButtonSelectionFunction curFun cenv env varName sizeVarName in
+            curFun, cenv, env, [Cast.Call(getSelectionFunName,[])], "RadioButton"
+         | _ -> raise (Failure ("Error: can't get selection of type " ^ vType))        
+     in
+     curFun, cenv, env, retType, exprs      
+  |  "isSelected" -> 
+     if not (List.length argList = 0) && not (List.hd argList=Ast.NoExpr) then
+        raise (Failure ("Error: method isSelected can't have argument"))
+     else    
+      let functionName = match vType with    
+         "CheckBox" -> "gtk_toggle_button_get_active"
+       | _ -> raise (Failure ("Error: can't call 'isSelected' of type " ^ vType))        
+     in
+      let exprs = [ Cast.Call (functionName, 
+                        [Cast.Call (gtkNameOfType vType, callerCExprList)
+                        ])]
+      in curFun, cenv, env, "Boolean", exprs 
+  | "getElement" ->
+     if not (List.length argList = 1) then
+        raise (Failure ("Error: method getElement should have 1 index argument"))
+     else    
+     let curFun, cenv, env, argType, argCExpr = evalPrimitiveExprRetValue curFun cenv env (List.hd argList)
+     in
+     if not (argType = "Numeric") then
+     	raise (Failure ("Error: index argument should be a numeric type"))
+     else
+     let elementType = match vType with
+        "RadioButtonGroup" -> "RadioButton"
+       | _ -> raise (Failure ("Error: can't call 'getElement' of type " ^ vType))
+     in
+     let exprs = [Cast.OneDArrSubs(List.hd callerCExprList, List.hd argCExpr)] in
+     curFun, cenv, env, elementType, exprs  
+  | _ as unknown -> raise (Failure ("Error: unknown get property method " ^ unknown))   
+
+(* arguments: property type, argList caller expr *)
+(* returns: return type ("Text", "Numeric", or widget type), C expr list of the get operation (looks it is always one expr) *)
+(* Note that we need update cenv when the getter is get a widget in a container, we define a function to get the widget, 
+and the C expr list calls this function *)
+let rec getPtyCExpr curFun cenv env methodType argList= function
+     Ast.Var(variable) ->
+       let vType = getVarTypeOrFail variable env in
+       let callerCExpr = [Cast.Id (variable)] in
+       getPtyHelper curFun cenv env methodType vType callerCExpr argList
+   | Ast.GetPty (aCallerExpr, aMethodType, anArgList) ->
+       let curFun, cenv, env, retType, callerCExpr = getPtyCExpr curFun cenv env aMethodType anArgList aCallerExpr in
+       getPtyHelper curFun cenv env methodType retType callerCExpr argList
+   | _ -> raise (Failure ("Error: unsupported expression type to get property ")) 
+
+let rec evalExprRetValue curFun cenv env =function
+   Ast.GetPty (callerExpr, methodType, argList) -> getPtyCExpr curFun cenv env methodType argList callerExpr
+  | _ as expr -> evalPrimitiveExprRetValue curFun cenv env expr   
+  
+   
 (* evalate Var or GetPty expression. *)
 (* This is used when evaulating an expression that allowed chained get expression,  
 i.e. combo.getSelection.setText("new text") *)
@@ -185,7 +282,7 @@ i.e. combo.getSelection.setText("new text") *)
 (* returns : return type, c expr*)
 let evalVarOrGetPty curFun cenv env =function
    Ast.Var(var) -> evalVar curFun cenv env var
-   | Ast.GetPty(callerExpr, methodType) -> getPtyCExpr curFun cenv env methodType callerExpr
+   | Ast.GetPty(callerExpr, methodType, argList) -> getPtyCExpr curFun cenv env methodType argList callerExpr
    | _ -> raise (Failure ("Error: not a type that can apply gtk operation "))  
 
 (* input varaible, propert type, initialValueList *) 
@@ -201,16 +298,35 @@ let setPtyCExpr curFun cenv env callerExpr methodType valueList=
      let curFun, cenv, env, retType, argCExprList = evalExprRetValue curFun cenv env (List.hd valueList) in
      if not (retType = "Text") then
               raise (Failure ("Error: Text argument expected for setText method, actual: " ^ retType))
+     else    
+      let functionName, cGtkName = match vType with    
+         "Label" -> "gtk_label_set_text", "GTK_LABEL"
+       | "TextEntry" -> "gtk_entry_set_text", "GTK_ENTRY"
+       | "Button" -> "gtk_button_set_label", "GTK_BUTTON" 
+ 	   | "CheckBox" -> "gtk_button_set_label", "GTK_BUTTON"
+ 	   | "RadioButton"-> "gtk_button_set_label", "GTK_BUTTON"
+        | _ -> raise (Failure ("Error: can't set text of type " ^ vType)) 
+      in        
+      let exprList = [Cast.Call (functionName, 
+                         Cast.Call (cGtkName, callerCExpr) :: argCExprList
+                         )]
+      in curFun, cenv, env, exprList
+  | "setSelected" -> 
+     if not (List.length valueList = 1) then
+        raise (Failure ("Error: method setSelected takes 1 argument"))
+     else 
+     let curFun, cenv, env, retType, argCExprList = evalExprRetValue curFun cenv env (List.hd valueList) in
+     if not (retType = "Boolean") then
+              raise (Failure ("Error: Boolean expression expected for setSelected method, actual: " ^ retType))
      else  
       let functionName = match vType with    
-          "Label" -> "gtk_label_set_text"
-        | "TextEntry" -> "gtk_entry_set_text" 
-        | _ -> raise (Failure ("Error: can't set text of type " ^ vType)) 
+          "CheckBox" -> "gtk_toggle_button_set_active"
+        | _ -> raise (Failure ("Error: can't set selected of type " ^ vType)) 
       in        
       let exprList = [Cast.Call (functionName, 
                          Cast.Call (gtkNameOfType vType, callerCExpr) :: argCExprList
                          )]
-      in curFun, cenv, env, exprList
+      in curFun, cenv, env, exprList      
    | _ as unknown -> raise (Failure ("Error: unknown set property method " ^ unknown))  
 
 (* return a expr list of a string type argument, e.g. StrLit or getPty of string type property *)
@@ -248,8 +364,8 @@ let rec addValues curFun cenv env exprList listName=function
        let curFun, cenv, env, evalValueExprList=
        match hd with
          Ast.StrLit (x) -> curFun, cenv, env, [Cast.StringLit x]
-       | Ast.GetPty (v2, ptyType) ->
-          let curFun, cenv, env, retType, exprList= getPtyCExpr curFun cenv env ptyType v2  in
+       | Ast.GetPty (v2, ptyType, argList) ->
+          let curFun, cenv, env, retType, exprList= getPtyCExpr curFun cenv env ptyType argList v2  in
           if not (retType = "Text") then
              raise (Failure ("Error value to pus in string glist is not of string type"))
           else curFun, cenv, env, exprList
@@ -281,15 +397,61 @@ let getCExprOfInitPosition curFun cenv env argsList =
     let curFun, cenv, env, arg2CExprList = numericTypeArgs curFun cenv env (List.hd (List.tl argsList))
     in curFun, cenv, env, arg1CExprList, arg2CExprList   
 
-(* returns variable declarations, expr list of the create opertion (usually has more than 1 item, e.g. create widget, fix put) *)
+(* returns variable declarations, stmt list of the create opertion (usually has more than 1 item, e.g. create widget, fix put) *)
 (* env will always updates *)
 let createCSyntax curFun cenv env variable containerVar widgetType valueList=
   if StringMap.mem variable env then
  		 raise (Failure ("Error: Duplicate variable " ^ variable))
   else		 
   let containerType = getVarTypeOrFail containerVar env in
-  match widgetType with
-  "Label" -> 
+  match widgetType with   
+    "RadioButtonGroup" ->
+     (* size, initial x, initial y*)
+     if not (containerType = "Window") then
+ 		 raise (Failure ("Error: RadioButtonGroup is not allowed to be created in: " ^ containerType))  
+     else if not (List.length valueList = 3) then
+        raise (Failure ("Error: RadioButtonGroup initialization takes 3 argument (size, initial x position, initial y position)"))    
+ 	 else
+ 	    let size = match List.hd valueList with
+ 	      Lit(x) -> x
+ 	      | _ -> raise (Failure ("Error: the size of radio button group should be a constant"))
+ 	    in  
+ 	    if size <= 0 then
+ 	      raise (Failure ("Error: Radio button group should have at least one button"))
+ 	    else  
+ 	    let sizeVarName=getRadioButtonGroupSizeVarName variable in
+ 	    let env=(StringMap.add variable (String "RadioButtonGroup") env) in
+		let env=(StringMap.add sizeVarName (String "Hidden") env) in
+		let env=(StringMap.add (variable ^ "iter") (String "Hidden") env) in
+ 	    let vdeclExpr = [ Cast.OneDArrDecl (Cast.PointerType(Cast.GtkWidget), variable, Cast.Literal(size)) ;
+ 	                      Cast.VDecl (Cast.BasicType (Cast.Int), sizeVarName)
+ 	                    ]    
+ 	    in
+        let curFun, cenv, env, arg2, arg3 = getCExprOfInitPosition curFun cenv env (List.tl valueList) 
+        in	    
+ 	    (* local var decl, stmts to create radio buttons *)
+ 	    let localVDecl=Cast.VDecl (Cast.BasicType (Cast.Int), variable ^ "iter") in
+ 	    let stmts=[
+ 	    Cast.Expr(Cast.Assign(sizeVarName, Cast.Literal(size)));
+ 	    Cast.Expr(Cast.CompoundTypeAssign(Cast.OneDArrSubs(Cast.Id(variable), Cast.Literal(0)), Cast.Call("gtk_radio_button_new", [Cast.Null])));
+ 	    Cast.Expr (Cast.Call ("gtk_fixed_put", [Cast.Call ("GTK_FIXED", [Cast.Id (getFrameNameFromWindowName containerVar)]); Cast.OneDArrSubs(Cast.Id(variable), Cast.Literal(0))] @ arg2  @ arg3));
+ 	    Cast.For(
+ 	    	Cast.Assign(variable ^ "iter", Cast.Literal(1)),
+ 	    	Cast.Binop(Cast.Id(variable ^ "iter"), Cast.Less, Cast.Literal(size)),
+ 	    	Cast.Assign(variable ^ "iter", Cast.Binop(Cast.Id(variable ^ "iter"), Cast.Add, Cast.Literal(1))),
+      		Cast.Block([Cast.Expr(Cast.CompoundTypeAssign(Cast.OneDArrSubs(Cast.Id(variable), Cast.Id(variable ^ "iter")), 
+      			Cast.Call("gtk_radio_button_new_from_widget", [Cast.Call("GTK_RADIO_BUTTON", [Cast.OneDArrSubs(Cast.Id(variable), Cast.Literal(0))])])));
+      			Cast.Expr (Cast.Call ("gtk_fixed_put", [Cast.Call ("GTK_FIXED", 
+      				[Cast.Id (getFrameNameFromWindowName containerVar)]); Cast.OneDArrSubs(Cast.Id(variable), Cast.Id(variable ^ "iter"))] 
+      				@ arg2  @ [Cast.Binop(List.hd arg3,Cast.Add,Cast.Binop(Cast.Id(variable ^ "iter"),Cast.Mult,Cast.Literal(24)))]))
+      			])													  
+ 	    	)
+ 	    ]
+ 	    in  
+        let nfdecl = { returnType = curFun.returnType; fname = curFun.fname; formals = curFun.formals; 
+             locals=curFun.locals @ [localVDecl]; body= curFun.body } in
+ 	    nfdecl, cenv, env, vdeclExpr, stmts                
+  | "Label" -> 
      if not (containerType = "Window") then
  		 raise (Failure ("Error: Label is not allowed to be created in: " ^ containerType))  
      else if not (List.length valueList = 3) then
@@ -317,6 +479,20 @@ let createCSyntax curFun cenv env variable containerVar widgetType valueList=
                    Cast.Expr (Cast.Call ("gtk_fixed_put", [Cast.Call ("GTK_FIXED", [Cast.Id (getFrameNameFromWindowName containerVar)]); Cast.Id(variable)] @ arg2  @ arg3))
                  ]
        in curFun, cenv, (StringMap.add variable (String "Button") env), vdeclExpr, exprList 
+   | "CheckBox" ->
+     if not (containerType = "Window") then
+ 		 raise (Failure ("Error: CheckBox is not allowed to be created in: " ^ containerType))  
+     else if not (List.length valueList = 3) then
+        raise (Failure ("Error: CheckBox initialization takes 3 argument (text, initial x position, initial y position)"))    
+ 	 else                
+       let vdeclExpr = [Cast.VDecl (Cast.PointerType (Cast.GtkWidget), variable) ]
+       in
+       let curFun, cenv, env, arg1, arg2, arg3 = getCExprOfTextAndInitPosition curFun cenv env valueList
+       in        
+       let exprList = [ Cast.Expr (Cast.Assign (variable, (Cast.Call ("gtk_check_button_new_with_label", arg1)))) ;
+                   Cast.Expr (Cast.Call ("gtk_fixed_put", [Cast.Call ("GTK_FIXED", [Cast.Id (getFrameNameFromWindowName containerVar)]); Cast.Id(variable)] @ arg2  @ arg3))
+                 ]
+       in curFun, cenv, (StringMap.add variable (String "CheckBox") env), vdeclExpr, exprList       
    | "TextEntry" ->
      if not (containerType = "Window") then
  		 raise (Failure ("Error: TextEntry is not allowed to be created in: " ^ containerType))  
@@ -386,24 +562,14 @@ let rec getCallbackFunRecord funName longestMatchedItem= function
       longestMatchedItem
     in  
       getCallbackFunRecord funName longestMatchedItem tl  
+       
 
-(* input: updated function, passed funs in list, remaining funs in list *)      
-(* return: updated function list *)
-let rec updateCFuns updatedFun passedFuns =function
-    [] -> passedFuns
-  | hd :: tl ->
-    if hd.fname = updatedFun.fname then
-       passedFuns @ [updatedFun] @ tl
-    else 
-       updateCFuns updatedFun (passedFuns @ [hd]) tl           
-
-(* *)
 (* return: register action c name (e.g. "clicked"), callback c function record. Throw exception if fail *)
 let regActionHelper cenv actionType callerType callBackFunName =  
   let regActionCName, callbackFunName =
   match (actionType, callerType) with
     ("click", "Button") -> "clicked", callBackFunName ^ "Click"
-  | (_ as x,_ as y ) ->raise (Failure ("Error: unknown action " ^ x ^ " for type "))
+  | (_ as x,_ ) ->raise (Failure ("Error: unknown action " ^ x ^ " for type "))
   in
   regActionCName, getCallbackFunRecord callbackFunName "" cenv.funs  
 
@@ -424,7 +590,8 @@ let evalShow curFun cenv env variable =
 (* input curFun cenv env expr to evaluate*)
 (* return curFun cenv env return type desc *)
 let rec eval curFun cenv env= function
-  Ast.Seq(e1, e2) ->
+  Ast.NoExpr -> curFun, cenv, env, String "NoExpr"
+  | Ast.Seq(e1, e2) ->
        let curFun, cenv, env, v = eval curFun cenv env e1 in
        eval curFun cenv env e2
 (* only allow this expression for e that is legal for evalExprRetValue *)       
@@ -517,7 +684,7 @@ let rec eval curFun cenv env= function
     let lfdecl = curFun in
     let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
              locals=lfdecl.locals ; body= append_to_list [regStmt] lfdecl.body } in
-         let nfuns = updateCFuns nfdecl [] cenv.funs in 
+    let nfuns = updateCFuns nfdecl [] cenv.funs in 
     nfdecl, {types=cenv.types; globals=cenv.globals; funs=nfuns}, env, String "Action"
   | Ast.If (cond, ifExpr, elseExpr) ->
      let curFun, cenv, env, condType, condCExpr = evalExprRetValue curFun cenv env cond in
@@ -621,8 +788,8 @@ let rec eval curFun cenv env= function
            ); funs=nfuns}, (StringMap.add id (String "Window") env), (String id) 
                 
  (* get properties of widget *)
-   | Ast.GetPty (callerExpr, ptyType)->   
-         let curFun, cenv, env, retType, exprs = getPtyCExpr curFun cenv env ptyType callerExpr in
+   | Ast.GetPty (callerExpr, ptyType, argList)->   
+         let curFun, cenv, env, retType, exprs = getPtyCExpr curFun cenv env ptyType argList callerExpr in
          let lfdecl = curFun in
          let stmts = getCStmtListFromExprList exprs in
          let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 

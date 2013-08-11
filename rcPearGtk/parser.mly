@@ -35,7 +35,8 @@
 %%
 
 expr:
- expr ARROW GETPTY LPAREN RPAREN { GetPty($1, $3) }
+    /* no expr */   {NoExpr}
+    | expr ARROW GETPTY LPAREN actuals_opt RPAREN { GetPty($1, $3, $5) }
     |  VARIABLE                { Var($1) }
     | expr PLUS expr          { Binop($1, Add, $3) }
     | expr MINUS expr         { Binop($1, Sub, $3) }

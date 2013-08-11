@@ -8,10 +8,7 @@ rule token = parse
 | "/*"     { comment lexbuf }           (* Comments *)
 | '('      { LPAREN }
 | ')'      { RPAREN }
-| '{'      { LBRACE }
-| '}'      { RBRACE }
 
-| ';'      { SEMI }
 | ','      { COMMA }
 | '.'	   { DOT }
 
@@ -34,7 +31,6 @@ rule token = parse
 | "for"    { FOR }
 | "while"  { WHILE }
 | "return" { RETURN }
-| "int"    { INT }
 
 | ['0'-'9']+ as lxm        { LITERAL(int_of_string lxm) }
 | '"'[^'"']+'"' as lxm     { STRLIT(String.sub lxm 1 (String.length lxm - 2)) }

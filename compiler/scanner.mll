@@ -10,6 +10,7 @@ rule token = parse
 | ')'      { RPAREN }
 
 | ','      { COMMA }
+| '.'      { DOT }
 
 | '+'      { PLUS }
 | '-'      { MINUS }
@@ -35,7 +36,7 @@ rule token = parse
 | '"'[^'"']+'"' as lxm     { STRLIT(String.sub lxm 1 (String.length lxm - 2)) }
 | '''[^''']''' as charlit  { CHAR(charlit.[1]) }
 | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
-| ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as obj { OBJECT(obj) }  
+| ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as obj { OBJECT(obj) } 
 
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }

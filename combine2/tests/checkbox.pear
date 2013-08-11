@@ -1,0 +1,15 @@
+Main()
+(
+wi.Window,
+wi.Move(300,200),
+wi.Size(400,500),
+wi.Resizable(no),
+wi.Title("this is a title"),
+fr.Frame,
+wi.Contain(fr),
+check1.CheckBox,
+check1.Label("checkbox1"),
+check1.Active(yes),
+fr.Contain(check1),
+wi.Showall(),
+)

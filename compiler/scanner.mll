@@ -40,6 +40,7 @@ rule token = parse
 | '''[^''']''' as charlit  { CHAR(charlit.[1]) }
 | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as obj { OBJECT(obj) }  
+| ['A'-'Z']['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as dobj { DOBJECT(dobj) }  
 
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }

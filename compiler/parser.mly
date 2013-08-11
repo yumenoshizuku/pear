@@ -9,6 +9,7 @@
 %token <char> CHAR
 %token <string> ID
 %token <string> OBJECT
+%token <string> DOBJECT
 %token EOF
 
 %nonassoc NOELSE
@@ -30,7 +31,7 @@ program:
  | program fdecl { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+   OBJECT LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
      { { oname = $1;
 	 oformals = $3;
 	 olocals = List.rev $6;
@@ -49,7 +50,7 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    OBJECT ID SEMI 
+    NOELSE OBJECT ID ASSIGN expr SEMI 
       { $2
         }
 
@@ -87,7 +88,7 @@ expr:
   | expr GT     expr { Binop($1, Greater,  $3) }
   | expr GEQ    expr { Binop($1, Geq,   $3) }
   | ID ASSIGN expr   { Assign($1, $3) }
-  | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
+  | OBJECT LPAREN actuals_opt RPAREN { Call($1, $3) } /* expr loops */
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:
@@ -96,4 +97,4 @@ actuals_opt:
 
 actuals_list:
     expr                    { [$1] }
-  | actuals_list COMMA expr { $3 :: $1 }
+  | actuals_list COMMA expr { $3 :: $1 } /* from here */

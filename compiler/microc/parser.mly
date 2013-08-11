@@ -26,11 +26,11 @@
 
 program:
    /* nothing */ { [], [] }
- | program OBJECT ID COMMA { ($3 :: fst $1), snd $1 }
+ | program vdecl COMMA { ($2 :: fst $1), snd $1 }
  | program fdecl COMMA { fst $1, ($2 :: snd $1) }
 
 fdecl:
-   OBJECT LPAREN formals_opt RPAREN LPAREN stmt_list RPAREN
+   OBJECT LPAREN formals_opt RPAREN LPAREN vdecl_list stmt_list RPAREN
      { { fname = $1;
 	 formals = $3;
 	 (*locals = List.rev $6;*)
@@ -44,13 +44,13 @@ formal_list:
     OBJECT ID                   { [($1^" "^$2)] }
   | formal_list COMMA OBJECT ID { ($3^" "^$4) :: $1 }
 
-/*vdecl_list:*/
-    /* nothing */ /*   { [] }
+vdecl_list:
+    /* nothing */    { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
    OBJECT ID COMMA { $2 }
-*/
+
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }

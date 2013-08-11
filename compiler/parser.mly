@@ -3,15 +3,15 @@
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR WHILE INT
+%token RETURN IF ELSE FOR WHILE
 %token <int> LITERAL
 %token <string> STRLIT
 %token <char> CHAR
 %token <string> ID
 %token <string> OBJECT
-%token <string> DOBJECT
 %token EOF
 
+%nonassoc NOCALL
 %nonassoc NOELSE
 %nonassoc ELSE
 %right ASSIGN
@@ -50,7 +50,7 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    NOELSE OBJECT ID ASSIGN expr SEMI 
+    NOCALL OBJECT ID ASSIGN expr SEMI 
       { $2
         }
 

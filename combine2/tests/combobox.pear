@@ -1,0 +1,17 @@
+Main()
+(
+wi.Window(),
+wi.Move(300,200),
+wi.Size(400,500),
+wi.Resizable(no),
+wi.Title("this is a title"),
+fr.Frame(),
+wi.Contain(fr),
+combo.ComboBox(),
+combo.Append("Selection1"),
+combo.Append("Selection2"),
+combo.Append("Selection3"),
+combo.Append("Selection4"),
+fr.Contain(combo),
+wi.Showall(),
+)

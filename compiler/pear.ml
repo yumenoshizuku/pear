@@ -102,19 +102,21 @@ let run (vars, objs) =
             (* Find the assignment *)
 
             (*let oexpr = List.hd odecl.obody in*)
-            let oexpr = List.find (fun e ->
+            let oexpr = List.hd (List.filter (fun e ->
               match e with
                 Ast.Expr(x) -> (match x with
-                                Ast.Assign(subvar, _) -> true
+                                Ast.Assign(xx, _) -> if xx = subvar then true else false
                                 | _ -> false)
               | _ -> false
-            ) odecl.obody in
-            print_endline ("TestPost");
+            ) odecl.obody) in
+            print_endline ("TestPost:" ^ subvar);
             let result = ( match oexpr with
                 Ast.Expr(x) -> ( match x with
-                    Ast.Assign(i, ex) -> 
+                    Ast.Assign(subvar, ex) -> 
                         let (value, cenv, new_obj_decls), (locals, globals) = eval env
-                        (ex, cenv, loc_obj_decls) in value
+                        (ex, cenv, loc_obj_decls) in 
+                        ignore(match value with Int(x) -> print_endline ("val:" ^
+                        (string_of_int x)) | _ -> ());value
                   | _ -> raise(Failure("undeclared identifier " ^ subvar ^ " for " ^ var)) )
               | _ -> raise(Failure("undeclared identifier " ^ subvar ^ " for " ^ var)) ) in
 

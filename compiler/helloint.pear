@@ -2,6 +2,8 @@ def id,
 Foo(bar) (
     puts(bar),
     return 2+4,
+    works = 22,
+
     fun = 69,
 )
 Main() (
@@ -16,6 +18,8 @@ Main() (
     puts(tryme(8)),
     puts("how"),
     puts(tryme.fun),
+    puts("wwwwwwww"),
+    puts(tryme.works),
 
     boo = 5+((2+7)*9),
     foo = "are you?",

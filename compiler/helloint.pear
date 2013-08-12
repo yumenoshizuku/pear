@@ -5,7 +5,8 @@ Foo(bar) (
 )
 Main() (
     Int foo,
-    String whoa,
+    Foo whoa,
+    whoa(1),
     boo = 5+((2+7)*9),
     foo = "yep works",
     puts(foo),

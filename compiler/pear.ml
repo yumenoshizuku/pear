@@ -85,6 +85,7 @@ let run (vars, objs) =
              expression.")))), env
       | (Ast.Assign(var, e), cenv, loc_obj_decls) ->
 	  let (v, cenv, loc_obj_decls), (locals, globals) = eval env (e, cenv, loc_obj_decls) in
+
             (* No variable declaration necessary: the 'else' just creates the new variable *)
             (match v with
                Int(x) ->
@@ -110,6 +111,39 @@ let run (vars, objs) =
 	           (*Make decision on Int 1 vs x*) (Char x, cenv, loc_obj_decls), (locals, NameMap.add var v globals)
 	         else (Char x, cenv, loc_obj_decls), (NameMap.add var v locals, globals) 
              | _ -> raise (Failure ("Error: Cannot assign type")))
+      | (Ast.AssignObj(i, f, actuals), cenv, loc_obj_decls) ->
+              (* Find the function declaration first *)
+              let odecl =
+                  try NameMap.find f obj_decls
+                  with Not_found -> raise (Failure ("undefined function " ^ f))
+              in
+              let new_odecl = { oname = ("$" ^ i); oformals = odecl.oformals;
+              olocals = odecl.olocals; obody = odecl.obody } in
+
+              (* Replace variable i *)
+	      let (locals, globals) = env in
+              let new_env = (
+                if NameMap.mem i locals then
+                  NameMap.add i (Pointer ("$" ^ i)) locals, globals
+	        else if NameMap.mem i globals then
+	          locals, NameMap.add i (Pointer ("$" ^ i)) globals
+	        else 
+                  NameMap.add i (Pointer ("$" ^ i)) locals, globals ) in
+
+              (* Remove old local declaration if it exists *)
+              let new_loc_obj_decls = List.filter (fun x -> x.oname = i) loc_obj_decls in
+              
+              (* Append new declaration *)
+              let final_loc_obj_decls = 
+              ( match new_loc_obj_decls with
+                 []  ->     []
+               | [x] -> [new_odecl]
+               | x   -> x @ [new_odecl] ) in
+
+              (* Return new enviornment *)
+              (Int 1, cenv, final_loc_obj_decls), new_env
+                   
+
       | (Ast.Call("puts", [e]), cenv, loc_obj_decls) ->
 	  let (v, (cvars, cfuncs), loc_obj_decls), env = eval env (e, cenv, loc_obj_decls) in
 
@@ -160,16 +194,27 @@ let run (vars, objs) =
            (* Return the new environment *)
 	   ((Int 0), (cvars, ncenv), loc_obj_decls), env
       | (Ast.Call(f, actuals), cenv, loc_obj_decls) ->
+	  let (locals, globals) = env in
 	  let odecl =
-	    try NameMap.find f obj_decls
-	    with Not_found -> raise (Failure ("undefined function " ^ f))
+        if NameMap.mem f locals then
+          let obj_id = (match (NameMap.find f locals) with
+              Pointer(x) -> x
+            | _ -> raise(Failure("not a pointer type"))) in
+	      try List.find (fun e -> e.oname = obj_id) loc_obj_decls
+	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
+        else if NameMap.mem f globals then
+          let obj_id = (match (NameMap.find f globals) with
+              Pointer(x) -> x
+            | _ -> raise(Failure("not a pointer type"))) in
+	      try List.find (fun e -> e.oname = obj_id) loc_obj_decls
+	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
+        else raise (Failure ("undefined reference " ^ f)) 
 	  in
 	  let actuals, env = List.fold_left
 	      (fun (actuals, env) actual ->
                   let (v, cenv, loc_obj_decls), env = eval env (actual, cenv, []) in v :: actuals, env)
    	      ([], env) (List.rev actuals)
 	  in
-	  let (locals, globals) = env in
 	  try
             (* The inner (_, globals) ignores locals, and the outer ( ,_) ignores cenv *)
 	    let ((_, globals), _) = call odecl actuals globals

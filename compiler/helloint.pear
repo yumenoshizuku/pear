@@ -4,7 +4,6 @@ Foo(bar) (
     return 2+3,
 )
 Main() (
-    Int boo,
     Int foo,
     String whoa,
     boo = 5+((2+7)*9),

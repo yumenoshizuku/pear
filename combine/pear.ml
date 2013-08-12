@@ -227,15 +227,19 @@ let run (vars, objs) =
 				fname = lfdecl.fname; 
 				formals = lfdecl.formals; 
              			locals= (
-		if (obj = "Display") then lfdecl.locals else (
-               let print =
-                 (Cast.VDecl (Cast.PointerType (Cast.GtkWidget), id))   
+	let print =
+		(match (obj, args) with
+			  ("Display", _) -> [] 
+			| ("CheckBoxArray", [Ast.Literal n]) ->
+        [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Binop(Literal n, Sub, Literal 1)))]
+			| (_, _) ->
+		[(Cast.VDecl (PointerType (GtkWidget), id))])   
 				 in
                  match lfdecl.locals with
-                   []  ->     [print]
-                 | [x] ->  x::[print]
-                 | x   -> x @ [print] 
-           )) ; body= (
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print 
+           ) ; body= (
                let print = 
 		(match (obj, args) with
 		  ("Window", []) -> 
@@ -277,10 +281,12 @@ let run (vars, objs) =
 	[Cast.Expr (Assign (id, (Call ("gtk_button_new_with_label", [StrLit s]))))]
 		| ("Label", []) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [Null]))))]
-		| ("Checkbox", []) ->
+		| ("CheckBox", []) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new", []))))]	
-		| ("Checkbox", [Ast.StrLit s]) ->
+		| ("CheckBox", [Ast.StrLit s]) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new_with_label", [StrLit s]))))]	
+		| ("CheckBoxArray", [Ast.Literal n]) ->
+	[Cast.For(Assign("int i", Literal 1), Binop(Id "i",Leq,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Cast.Block[Expr(Assign(id ^ "[i-1]", Call("gtk_check_button_new", [])))])]
 		| ("Menubar", []) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_menu_bar_new", []))))]
 		| ("Menu", []) ->
@@ -289,6 +295,12 @@ let run (vars, objs) =
 	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new", []))))]
 		| ("Menuitem", [Ast.StrLit s]) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new_with_label", [StrLit s]))))]
+    	| ("TextEntry", []) ->
+    [Cast.Expr (Assign (id, (Call ("gtk_entry_new", []))))]   
+		| ("RadioButton", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_radio_button_new", [Null]))))] 
+ 		| ("ComboBox", []) ->
+    [Cast.Expr (Assign (id, (Call ("gtk_combo_box_new", []))))]      
 		| ("Display", []) -> []
 		| _  -> raise (Failure ("Error: Object not supported."))) in
                  match lfdecl.body with
@@ -400,7 +412,24 @@ let run (vars, objs) =
 	[Cast.Expr (Call("gtk_widget_show",[Id id]))]
 		| (_, "Showall", _) ->
 	[Cast.Expr (Call("gtk_widget_show_all",[Id id]))]
-
+		| (String("Checkbox"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Cast.Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]		
+		| (String("RadioButton"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Cast.Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
+		| (String("TextEntry"), "Text", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_entry_set_text ",
+	[Cast.Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]	
+		| (String("ComboBox"), "Append", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_combo_box_append_text ",
+	[Cast.Call("GTK_COMBO",[Cast.Id id]); StrLit s])))]	
+		| (String ("Checkbox"), "Active", [Ast.Id("yes")]) ->		
+	[Cast.Expr (Call("gtk_toggle_button_set_active",
+	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("TRUE")]))]
+		| (String ("Checkbox"), "Active", [Ast.Id("no")]) ->		
+	[Cast.Expr (Call("gtk_toggle_button_set_active",
+	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("FALSE")]))]	
 
 
 		| (_, _, _) -> raise (Failure ("Error: Variable " ^ id ^ "or object " ^ obj ^" is invalid or cannot be changed."))

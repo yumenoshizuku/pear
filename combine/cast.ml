@@ -107,16 +107,16 @@ let rec string_of_expr = function
 (* Print a statement as a string *)
 let rec string_of_stmt = function
     Block(stmts) ->
-      "{\n\t" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
+      "{\n\t" ^ String.concat "" (List.map string_of_stmt stmts) ^ "\t\t}\n"
   | Expr(expr) -> "\t" ^ string_of_expr expr ^ ";\n";
   | Return(expr) -> "\treturn " ^ string_of_expr expr ^ ";\n";
   | If(e, s, Block([])) -> "\tif (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
-  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
+  | If(e, s1, s2) ->  "\tif (" ^ string_of_expr e ^ ")\n" ^
       string_of_stmt s1 ^ "else\n\t" ^ string_of_stmt s2
   | For(e1, e2, e3, s) ->
-      "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
+      "\tfor (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | While(e, s) -> "\twhile (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
 let rec string_of_datatype = function
      Int -> "int"

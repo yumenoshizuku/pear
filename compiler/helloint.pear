@@ -6,7 +6,11 @@ Foo(bar) (
 Main() (
     Int foo,
     Foo whoa,
+    puts("try"),
+    whoa = Foo(1),
+    puts("hi"),
     whoa(1),
+    puts("ho"),
     boo = 5+((2+7)*9),
     foo = "yep works",
     puts(foo),

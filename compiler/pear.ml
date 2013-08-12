@@ -43,9 +43,9 @@ let run (vars, objs) =
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env : (Ast.expr * (Cast.var_decl list * Cast.func_decl list) *
-    Ast.obj_decl list) ->
+    Ast.obj_decl NameMap.t) ->
         (primitive * (Cast.var_decl list * Cast.func_decl list) * Ast.obj_decl
-        list) * (primitive NameMap.t * primitive NameMap.t) 
+        NameMap.t) * (primitive NameMap.t * primitive NameMap.t) 
         = function
 
         (* Primitive expressions *)
@@ -112,36 +112,43 @@ let run (vars, objs) =
 	         else (Char x, cenv, loc_obj_decls), (NameMap.add var v locals, globals) 
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.AssignObj(i, f, actuals), cenv, loc_obj_decls) ->
-              (* Find the function declaration first *)
+
+              (* Find the object declaration first *)
               let odecl =
                   try NameMap.find f obj_decls
                   with Not_found -> raise (Failure ("undefined function " ^ f))
               in
+
+              (* Create new object declaration *)
               let new_odecl = { oname = ("$" ^ i); oformals = odecl.oformals;
               olocals = odecl.olocals; obody = odecl.obody } in
 
               (* Replace variable i *)
-	      let (locals, globals) = env in
+	          let (locals, globals) = env in
               let new_env = (
                 if NameMap.mem i locals then
                   NameMap.add i (Pointer ("$" ^ i)) locals, globals
-	        else if NameMap.mem i globals then
-	          locals, NameMap.add i (Pointer ("$" ^ i)) globals
-	        else 
+	            else if NameMap.mem i globals then
+	              locals, NameMap.add i (Pointer ("$" ^ i)) globals
+	            else 
                   NameMap.add i (Pointer ("$" ^ i)) locals, globals ) in
 
-              (* Remove old local declaration if it exists *)
-              let new_loc_obj_decls = List.filter (fun x -> x.oname = i) loc_obj_decls in
-              
               (* Append new declaration *)
+              (*
               let final_loc_obj_decls = 
-              ( match new_loc_obj_decls with
-                 []  ->     []
-               | [x] -> [new_odecl]
+              ( match loc_obj_decls with
+                 []  ->     [new_odecl]
+               | [x] -> x::[new_odecl]
                | x   -> x @ [new_odecl] ) in
-
+      ignore(print_endline ("size:'" ^ string_of_int (List.length
+      final_loc_obj_decls) ^ "'"));
+      *)
               (* Return new enviornment *)
-              (Int 1, cenv, final_loc_obj_decls), new_env
+              let new_obj_decls =(NameMap.add ("$" ^ i) new_odecl loc_obj_decls)
+              in
+              let found_decl = NameMap.find ("$" ^ i) new_obj_decls in
+              ignore(print_endline ("oname:'" ^ found_decl.oname ^ "'"));
+              (Int 1, cenv, new_obj_decls), new_env
                    
 
       | (Ast.Call("puts", [e]), cenv, loc_obj_decls) ->
@@ -194,42 +201,45 @@ let run (vars, objs) =
            (* Return the new environment *)
 	   ((Int 0), (cvars, ncenv), loc_obj_decls), env
       | (Ast.Call(f, actuals), cenv, loc_obj_decls) ->
-	  let (locals, globals) = env in
-	  let odecl =
-        if NameMap.mem f locals then
-          let obj_id = (match (NameMap.find f locals) with
+        let (locals, globals) = env in
+        let odecl =
+          if NameMap.mem f locals then
+            let obj_id = (match (NameMap.find f locals) with
               Pointer(x) -> x
             | _ -> raise(Failure("not a pointer type"))) in
-	      try List.find (fun e -> e.oname = obj_id) loc_obj_decls
+          ignore(print_endline ("loname:'" ^ obj_id ^ "'"));
+	      try NameMap.find obj_id loc_obj_decls
 	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
         else if NameMap.mem f globals then
           let obj_id = (match (NameMap.find f globals) with
               Pointer(x) -> x
             | _ -> raise(Failure("not a pointer type"))) in
-	      try List.find (fun e -> e.oname = obj_id) loc_obj_decls
+	      try NameMap.find obj_id loc_obj_decls
 	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
         else raise (Failure ("undefined reference " ^ f)) 
-	  in
-	  let actuals, env = List.fold_left
+	    in
+	    let actuals, env = List.fold_left
 	      (fun (actuals, env) actual ->
-                  let (v, cenv, loc_obj_decls), env = eval env (actual, cenv, []) in v :: actuals, env)
+                  let (v, cenv, loc_obj_decls), env = eval env (actual, cenv,
+                  loc_obj_decls) in v :: actuals, env)
    	      ([], env) (List.rev actuals)
-	  in
-	  try
+	    in
+	    try
             (* The inner (_, globals) ignores locals, and the outer ( ,_) ignores cenv *)
-	    let ((_, globals), _) = call odecl actuals globals
-	    in ((Int 0), cenv, loc_obj_decls), (locals, globals)
-	  with ReturnException(v, globals) -> (v, cenv, loc_obj_decls), (locals, globals)
+	      let ((_, globals), _) = call odecl actuals globals
+	      in ((Int 0), cenv, loc_obj_decls), (locals, globals)
+	    with ReturnException(v, globals) -> (v, cenv, loc_obj_decls), (locals, globals)
     in
 
     (* Execute a statement and return an updated environment *)
     let rec exec (env, cenv, loc_obj_decls) : Ast.stmt -> ((primitive NameMap.t * primitive
-    NameMap.t) * (Cast.var_decl list * Cast.func_decl list) * Ast.obj_decl list) = function
+    NameMap.t) * (Cast.var_decl list * Cast.func_decl list) * Ast.obj_decl
+    NameMap.t) = function
 	Ast.Block(stmts) -> List.fold_left exec (env, cenv, loc_obj_decls) stmts
-      | Ast.Expr(e) -> let (_, cenv, _), env = eval env (e, cenv, []) in (env,
+      | Ast.Expr(e) -> let (_, cenv, loc_obj_decls), env = eval env (e, cenv, loc_obj_decls) in (env,
       cenv, loc_obj_decls)
       | Ast.If(e, s1, s2) ->
-              let (v, cenv, _), env = eval env (e, cenv, []) in
+              let (v, cenv, _), env = eval env (e, cenv, loc_obj_decls) in
             (match v with
               Int(x) ->
 	          exec (env, cenv, loc_obj_decls) (if x != 0 then s1 else s2)
@@ -237,7 +247,8 @@ let run (vars, objs) =
             statement.")))
       | Ast.While(e, s) ->
 	  let rec loop (env, cenv, loc_obj_decls) =
-              let (v, cenv, loc_obj_decls), env = eval env (e, cenv, []) in
+              let (v, cenv, loc_obj_decls), env = eval env (e, cenv,
+              loc_obj_decls) in
             (match v with
                Int(x) ->
 	           if x != 0 then loop (exec (env, cenv, loc_obj_decls) s) else env
@@ -245,22 +256,24 @@ let run (vars, objs) =
              statement.")) )
           in (loop (env, cenv, loc_obj_decls), cenv, loc_obj_decls)
       | Ast.For(e1, e2, e3, s) ->
-              let (_, cenv, _), env = eval env (e1, cenv, []) in
+              let (_, cenv, _), env = eval env (e1, cenv, loc_obj_decls) in
 	  let rec loop env =
-              let (v, cenv, _), env = eval env (e2, cenv, []) in
+              let (v, cenv, _), env = eval env (e2, cenv, loc_obj_decls) in
             (match v with
             Int(x) ->
 	    if x != 0 then
                 let (env, cenv, loc_obj_decls) = (exec (env, cenv,
                 loc_obj_decls) s) in 
-                let (_, cenv, loc_obj_decls), env = eval env (e3, cenv, []) in
+                let (_, cenv, loc_obj_decls), env = eval env (e3, cenv,
+                loc_obj_decls) in
 	      loop (env)
 	    else
 	      env, cenv, loc_obj_decls
             | _ -> raise (Failure ("Error: invalid operation on a for statement.")))
 	  in (loop env)
       | Ast.Return(e) ->
-              let (v, cenv, _), (locals, globals) = eval env (e, cenv, []) in
+              let (v, cenv, _), (locals, globals) = eval env (e, cenv,
+              loc_obj_decls) in
 	  raise (ReturnException(v, globals))
       | Ast.Declare(o, v) -> 
               let (locals, globals) = env in 
@@ -293,7 +306,8 @@ let run (vars, objs) =
     } in
 
     (* Execute each statement in sequence, return updated global symbol table *)
-  let env, cenv, _ = (List.fold_left exec ((locals,globals), ([], [new_cenv]), [])
+  let env, cenv, _ = (List.fold_left exec ((locals,globals), ([], [new_cenv]),
+  NameMap.empty)
     odecl.obody) in
     (env, cenv)
   

@@ -166,7 +166,7 @@ let run (vars, objs) =
 	  in
 	  let actuals, env = List.fold_left
 	      (fun (actuals, env) actual ->
-                  let (v, cenv, _), env = eval env (actual, cenv, []) in v :: actuals, env)
+                  let (v, cenv, loc_obj_decls), env = eval env (actual, cenv, []) in v :: actuals, env)
    	      ([], env) (List.rev actuals)
 	  in
 	  let (locals, globals) = env in
@@ -178,26 +178,27 @@ let run (vars, objs) =
     in
 
     (* Execute a statement and return an updated environment *)
-    let rec exec (env, cenv) : Ast.stmt -> ((primitive NameMap.t * primitive
-    NameMap.t) * (Cast.var_decl list * Cast.func_decl list)) = function
-	Ast.Block(stmts) -> List.fold_left exec (env, cenv) stmts
-      | Ast.Expr(e) -> let (_, cenv, _), env = eval env (e, cenv, []) in (env, cenv)
+    let rec exec (env, cenv, loc_obj_decls) : Ast.stmt -> ((primitive NameMap.t * primitive
+    NameMap.t) * (Cast.var_decl list * Cast.func_decl list) * Ast.obj_decl list) = function
+	Ast.Block(stmts) -> List.fold_left exec (env, cenv, loc_obj_decls) stmts
+      | Ast.Expr(e) -> let (_, cenv, _), env = eval env (e, cenv, []) in (env,
+      cenv, loc_obj_decls)
       | Ast.If(e, s1, s2) ->
               let (v, cenv, _), env = eval env (e, cenv, []) in
             (match v with
               Int(x) ->
-	          exec (env, cenv) (if x != 0 then s1 else s2)
+	          exec (env, cenv, loc_obj_decls) (if x != 0 then s1 else s2)
             | _ -> raise (Failure ("Error: invalid operation on a conditional
             statement.")))
       | Ast.While(e, s) ->
-	  let rec loop (env, cenv) =
-              let (v, cenv, _), env = eval env (e, cenv, []) in
+	  let rec loop (env, cenv, loc_obj_decls) =
+              let (v, cenv, loc_obj_decls), env = eval env (e, cenv, []) in
             (match v with
                Int(x) ->
-	           if x != 0 then loop (exec (env, cenv) s) else env
+	           if x != 0 then loop (exec (env, cenv, loc_obj_decls) s) else env
              | _ -> raise (Failure ("Error: invalid operation on a while
              statement.")) )
-          in (loop (env, cenv), cenv)
+          in (loop (env, cenv, loc_obj_decls), cenv, loc_obj_decls)
       | Ast.For(e1, e2, e3, s) ->
               let (_, cenv, _), env = eval env (e1, cenv, []) in
 	  let rec loop env =
@@ -205,19 +206,21 @@ let run (vars, objs) =
             (match v with
             Int(x) ->
 	    if x != 0 then
-                let (_, cenv, _), env = eval (fst(exec (env, cenv) s)) (e3, cenv, []) in
+                let (env, cenv, loc_obj_decls) = (exec (env, cenv,
+                loc_obj_decls) s) in 
+                let (_, cenv, loc_obj_decls), env = eval env (e3, cenv, []) in
 	      loop (env)
 	    else
-	      env
+	      env, cenv, loc_obj_decls
             | _ -> raise (Failure ("Error: invalid operation on a for statement.")))
-	  in (loop env, cenv)
+	  in (loop env)
       | Ast.Return(e) ->
               let (v, cenv, _), (locals, globals) = eval env (e, cenv, []) in
 	  raise (ReturnException(v, globals))
       | Ast.Declare(o, v) -> 
               let (locals, globals) = env in 
               let var = ((NameMap.add v (Int 0) locals), globals) in 
-              (var, cenv)
+              (var, cenv, loc_obj_decls)
 
     in
 
@@ -245,7 +248,7 @@ let run (vars, objs) =
     } in
 
     (* Execute each statement in sequence, return updated global symbol table *)
-    let env, cenv = (List.fold_left exec ((locals,globals), ([], [new_cenv]))
+  let env, cenv, _ = (List.fold_left exec ((locals,globals), ([], [new_cenv]), [])
     odecl.obody) in
     (env, cenv)
   

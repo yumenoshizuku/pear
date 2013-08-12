@@ -4,9 +4,13 @@ Foo(bar) (
     return 2+3,
 )
 Main() (
-    String whoa,
     Int boo,
-    boo = 2,
+    Int foo,
+    String whoa,
+    boo = 5+((2+7)*9),
+    foo = "yep works",
+    puts(foo),
+    puts(boo),
     id = 4,
     (*boo(3),*)
     [puts("hi"),puts("ho"),]

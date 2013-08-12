@@ -49,7 +49,7 @@ vdecl_list:
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-    OBJECT ID COMMA { $1 ^ " " ^ $2 } 
+    OBJECT ID COMMA {$2 } 
 
 stmt_list:
     /* nothing */  { [] }
@@ -88,7 +88,7 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3) }
   /*| ID DOT ID ASSIGN expr { ChildAssign($1, $3, $5) }*/
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
- /* | ID ASSIGN OBJECT LPAREN actuals_opt RPAREN { AssignObj($1,$3,$5) }*/
+  | ID ASSIGN OBJECT LPAREN actuals_opt RPAREN { AssignObj($1,$3,$5) }
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:

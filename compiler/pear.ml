@@ -85,10 +85,22 @@ let run (vars, objs) =
 	  let (v, cenv), (locals, globals) = eval env (e, cenv) in
             (match v with
                Int(x) ->
-	         if NameMap.mem ("Int " ^ var) locals then
-	          (*return Int 1? since assign succeeds?*) (Int x, cenv), (NameMap.add ("Int " ^ var) v locals, globals)
-	         else if NameMap.mem ("Int " ^ var) globals then
-	           (*Make decision on Int 1 vs x*) (Int x, cenv), (locals, NameMap.add ("Int " ^ var) v globals)
+	         if NameMap.mem var locals then
+	          (*return Int 1? since assign succeeds?*) (Int x, cenv), (NameMap.add var v locals, globals)
+	         else if NameMap.mem var globals then
+	           (*Make decision on Int 1 vs x*) (Int x, cenv), (locals, NameMap.add var v globals)
+	         else raise (Failure ("undeclared identifier " ^ var))
+             | String(x) ->
+	         if NameMap.mem var locals then
+	          (*return Int 1? since assign succeeds?*) (String x, cenv), (NameMap.add var v locals, globals)
+	         else if NameMap.mem var globals then
+	           (*Make decision on Int 1 vs x*) (String x, cenv), (locals, NameMap.add var v globals)
+	         else raise (Failure ("undeclared identifier " ^ var))
+             | Char(x) ->
+	         if NameMap.mem var locals then
+	          (*return Int 1? since assign succeeds?*) (Char x, cenv), (NameMap.add var v locals, globals)
+	         else if NameMap.mem var globals then
+	           (*Make decision on Int 1 vs x*) (Char x, cenv), (locals, NameMap.add var v globals)
 	         else raise (Failure ("undeclared identifier " ^ var))
              | _ -> raise (Failure ("Error: Cannot assign type")))
       | (Ast.Call("puts", [e]), cenv) ->

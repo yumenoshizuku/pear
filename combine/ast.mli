@@ -9,6 +9,7 @@ type expr =
   | Id of string
   | Binop of expr * op * expr
   | Assign of string * expr
+  | AssignObj of string * string * expr list
   | Call of string * expr list
   | Noexpr
 
@@ -21,7 +22,7 @@ type stmt =
   | For of expr * expr * expr * stmt
   | While of expr * stmt
   | Set of string * string * expr list
-
+  | Declare of string * string
 
 (* Variable declaration *)
   (*

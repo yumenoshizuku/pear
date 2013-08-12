@@ -88,6 +88,7 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) } /* expr loops */
   | LPAREN expr RPAREN { $2 }
+  | ID ASSIGN OBJECT LPAREN actuals_opt RPAREN { AssignObj($1,$3,$5) }
 
 actuals_opt:
     /* nothing */ { [] }

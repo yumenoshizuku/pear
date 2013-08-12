@@ -1,23 +1,27 @@
 def id,
 Foo(bar) (
-    funky = 69,
     puts(bar),
     return 2+4,
+    fun = 69,
 )
 Main() (
     def foo,
-    def whoa,
-    puts("try"),
-    whoa = Foo(1),
-    puts("hi"),
-    puts(whoa(12)),
-    puts("ho"),
-    puts(whoa.funky),
+    def tryme,
+    puts("hello"),
+
+    tryme = Foo(1),
+    puts("world"),
+    puts(tryme(12)),
+    puts("--"),
+    puts(tryme(8)),
+    puts("how"),
+    puts(tryme.fun),
+
     boo = 5+((2+7)*9),
-    foo = "yep works",
+    foo = "are you?",
     puts(foo),
     puts(boo),
     id = 4,
     (*boo(3),*)
-    [puts("hi"),puts("ho"),]
+    [puts("hi"),puts("hey"),]
 )

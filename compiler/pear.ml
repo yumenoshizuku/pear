@@ -97,15 +97,19 @@ let run (vars, objs) =
 	      if NameMap.mem obj_id loc_obj_decls then 
             (* Get the object declaration *)
             let odecl = NameMap.find obj_id loc_obj_decls in
-            print_endline("Len:"^string_of_int (List.length odecl.obody));
+            print_endline("TestLength:"^string_of_int (List.length odecl.obody));
             
             (* Find the assignment *)
-            (*let oexpr = List.hd odecl.obody in*)
-            (* ^^ FIX THIS: make it capable of iterating through the expressions
-             * without calling any ^^*) 
-            let oexpr = List.hd odecl.obody in
-            print_endline ("Weh");
 
+            (*let oexpr = List.hd odecl.obody in*)
+            let oexpr = List.find (fun e ->
+              match e with
+                Ast.Expr(x) -> (match x with
+                                Ast.Assign(subvar, _) -> true
+                                | _ -> false)
+              | _ -> false
+            ) odecl.obody in
+            print_endline ("TestPost");
             let result = ( match oexpr with
                 Ast.Expr(x) -> ( match x with
                     Ast.Assign(i, ex) -> 
@@ -122,7 +126,6 @@ let run (vars, objs) =
         else 
           begin raise (Failure ("undefined reference " ^ var)) end 
         (* Define for global variables (should be almost identical logic) *)
-
 
       | (Ast.ChildAssign(var, subvar, e), cenv, loc_obj_decls) ->
 	    let (value, cenv, loc_obj_decls), (locals, globals) = eval env (e, cenv, loc_obj_decls) in

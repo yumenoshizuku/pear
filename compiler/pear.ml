@@ -49,23 +49,26 @@ let run (vars, objs) =
         = function
 
         (* Primitive expressions *)
-	(Ast.Literal(i), cenv, loc_obj_decls) -> (Int i, cenv, loc_obj_decls), env
+	    (Ast.Literal(i), cenv, loc_obj_decls) -> (Int i, cenv, loc_obj_decls), env
       | (Ast.StrLit(i), cenv, loc_obj_decls) -> (String i, cenv, loc_obj_decls), env
       | (Ast.Char(i), cenv, loc_obj_decls) -> (Char i, cenv, loc_obj_decls), env
 
         (* Other expressions *)
-      | (Ast.Noexpr, cenv, loc_obj_decls) -> (Int 1, cenv, loc_obj_decls), env (* must be non-zero for the for loop predicate *)
+      | (Ast.Noexpr, cenv, loc_obj_decls) -> 
+          (Int 1, cenv, loc_obj_decls), env (* must be non-zero for the for loop predicate *)
+
       | (Ast.Id(var), cenv, loc_obj_decls) ->
-      let locals, globals = env in
-	  if NameMap.mem var locals then
-	    ((NameMap.find var locals), cenv, loc_obj_decls), env
-	  else if NameMap.mem var globals then
-	    ((NameMap.find var globals), cenv, loc_obj_decls), env
-	  else raise (Failure ("undeclared identifier " ^ var))
+          let locals, globals = env in
+	        if NameMap.mem var locals then
+	      ((NameMap.find var locals), cenv, loc_obj_decls), env
+	        else if NameMap.mem var globals then
+	      ((NameMap.find var globals), cenv, loc_obj_decls), env
+	        else raise (Failure ("undeclared identifier " ^ var))
+
       | (Ast.Binop(e1, op, e2), cenv, loc_obj_decls) ->
-	  let (v1, cenv, loc_obj_decls), env = eval env (e1, cenv, loc_obj_decls) in
-          let (v2, cenv, loc_obj_decls), env = eval env (e2, cenv, loc_obj_decls) in
-	  let boolean i = if i then 1 else 0 in
+	      let (v1, cenv, loc_obj_decls), env = eval env (e1, cenv, loc_obj_decls) in
+            let (v2, cenv, loc_obj_decls), env = eval env (e2, cenv, loc_obj_decls) in
+	      let boolean i = if i then 1 else 0 in
 
             (* Define binary operations for the primitive expressions *)
             ((match v1, v2 with
@@ -83,18 +86,182 @@ let run (vars, objs) =
 	               | Ast.Geq -> boolean (x1 >= x2)), cenv, loc_obj_decls)
              | _ -> raise (Failure("Error: invalid operation on a binary
              expression.")))), env
+
+      | (Ast.ChildId(var, subvar), cenv, loc_obj_decls) ->
+        (* Find pointer variable *)
+        let (locals, globals) = env in
+        if NameMap.mem var locals then
+            let obj_id = (match (NameMap.find var locals) with
+              Pointer(x) -> x
+            | _ -> raise(Failure("not a pointer type"))) in
+	      if NameMap.mem obj_id loc_obj_decls then 
+            (* Get the object declaration *)
+            let odecl = NameMap.find obj_id loc_obj_decls in
+            print_endline("Len:"^string_of_int (List.length odecl.obody));
+            
+            (* Find the assignment *)
+            (*let oexpr = List.hd odecl.obody in*)
+            (* ^^ FIX THIS: make it capable of iterating through the expressions
+             * without calling any ^^*) 
+            let oexpr = List.hd odecl.obody in
+            print_endline ("Weh");
+
+            let result = ( match oexpr with
+                Ast.Expr(x) -> ( match x with
+                    Ast.Assign(i, ex) -> 
+                        let (value, cenv, new_obj_decls), (locals, globals) = eval env
+                        (ex, cenv, loc_obj_decls) in value
+                  | _ -> raise(Failure("undeclared identifier " ^ subvar ^ " for " ^ var)) )
+              | _ -> raise(Failure("undeclared identifier " ^ subvar ^ " for " ^ var)) ) in
+
+            (* Return value *)
+            (result, cenv, loc_obj_decls), env 
+          else 
+            begin raise (Failure (var ^ " references undefined local function
+              " ^ obj_id)) end
+        else 
+          begin raise (Failure ("undefined reference " ^ var)) end 
+        (* Define for global variables (should be almost identical logic) *)
+
+
+      | (Ast.ChildAssign(var, subvar, e), cenv, loc_obj_decls) ->
+	    let (value, cenv, loc_obj_decls), (locals, globals) = eval env (e, cenv, loc_obj_decls) in
+        let new_loc_obj_decls =
+          if NameMap.mem var locals then
+            let obj_id = (match (NameMap.find var locals) with
+              Pointer(x) -> x
+            | _ -> raise(Failure("not a pointer type"))) in
+	      try 
+            (* Get the object declaration *)
+            let odecl = NameMap.find obj_id loc_obj_decls in
+            
+            (* Remove previous declaration *)
+            let new_body = List.filter (fun e -> match e with
+                Ast.Expr(x) -> (match x with
+                                  Ast.Assign(i, _) -> 
+                                    if i = ("%" ^ var) then false else true
+                                | _ -> true)
+              | _ -> false) odecl.obody in
+
+            (* Create variable assignment %var *)
+            let assign_var = ( match value with
+                Int(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Literal x))) 
+              | String(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.StrLit x)))
+              | Char(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Char x)))
+              | _ -> raise(Failure("cannot assign a non-primitive")) ) in
+
+            (* Append to final body's expression list *)
+            let final_body = assign_var::new_body in
+            let new_decl = { oname = odecl.oname; oformals =
+              odecl.oformals; olocals = odecl.olocals; obody =
+              final_body } in
+
+            (* Return value *)
+            (NameMap.add obj_id new_decl loc_obj_decls)
+	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
+
+          else if NameMap.mem var globals then
+            let obj_id = (match (NameMap.find var globals) with
+              Pointer(x) -> x
+            | _ -> raise(Failure("not a pointer type"))) in
+	      try 
+            (* Get the object declaration *)
+            let odecl = NameMap.find obj_id loc_obj_decls in
+            
+            (* Remove previous declaration *)
+            let new_body = List.filter (fun e -> match e with
+                Ast.Expr(x) -> false 
+              | _ -> true) odecl.obody in
+
+            (* Create variable assignment %var *)
+            let assign_var = ( match value with
+                Int(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Literal x))) 
+              | String(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.StrLit x)))
+              | Char(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Char x)))
+              | _ -> raise(Failure("cannot assign a non-primitive")) ) in
+
+            (* Append to final body's expression list *)
+            let final_body = assign_var::new_body in
+            let new_decl = { oname = odecl.oname; oformals =
+              odecl.oformals; olocals = odecl.olocals; obody =
+              final_body } in
+
+            (* Return value *)
+            (NameMap.add obj_id new_decl loc_obj_decls)
+	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
+
+          else raise (Failure ("undefined reference " ^ var))              
+        in
+        (Int 1, cenv, new_loc_obj_decls), (locals, globals)
+
+
       | (Ast.Assign(var, e), cenv, loc_obj_decls) ->
-	  let (v, cenv, loc_obj_decls), (locals, globals) = eval env (e, cenv, loc_obj_decls) in
+	      let (v, cenv, loc_obj_decls), (locals, globals) = eval env (e, cenv, loc_obj_decls) in
 
             (* No variable declaration necessary: the 'else' just creates the new variable *)
             (match v with
                Int(x) ->
-	         if NameMap.mem var locals then
-	          (*return Int 1? since assign succeeds?*) (Int x, cenv,
-                  loc_obj_decls), (NameMap.add var v locals, globals)
-	         else if NameMap.mem var globals then
-	           (*Make decision on Int 1 vs x*) (Int x, cenv, loc_obj_decls), (locals, NameMap.add var v globals)
-	         else (Int x, cenv, loc_obj_decls), (NameMap.add var v locals, globals) 
+	             if NameMap.mem var locals then
+
+                   (* See if it's calling a local object *)
+                   if NameMap.mem odecl.oname loc_obj_decls then 
+               
+                     (* Remove previous declaration *)
+                     let curr_decl = NameMap.find odecl.oname loc_obj_decls in
+                     let new_body = List.filter (fun e -> match e with
+                       Ast.Expr (Ast.Assign(var, e)) -> false
+                         | _ -> true) curr_decl.obody in
+
+                     (* Create variable assignment %var *)
+                     let assign_var = Ast.Expr (Ast.Assign("%" ^ var, (Ast.Literal x))) in
+
+                     (* Append to final body's expression list *)
+                     let final_body = assign_var::new_body in
+
+                     let new_decl = { oname = curr_decl.oname; oformals =
+                       curr_decl.oformals; olocals = curr_decl.olocals; obody =
+                         final_body } in
+
+	                 (*return Int 1? since assign succeeds?*) 
+                     (Int x, cenv, (NameMap.add odecl.oname new_decl loc_obj_decls)), 
+                       (NameMap.add var v locals, globals)
+                   else begin
+                     (Int x, cenv,
+                       loc_obj_decls), (NameMap.add var v locals, globals)
+                   end
+
+	             else if NameMap.mem var globals then
+	               (*Make decision on Int 1 vs x*) 
+                   (Int x, cenv, loc_obj_decls), (locals, NameMap.add var v globals)
+
+	             else begin 
+                   (* See if it's calling a local object *)
+                   if NameMap.mem odecl.oname loc_obj_decls then 
+               
+                     (* Remove previous declaration *)
+                     let curr_decl = NameMap.find odecl.oname loc_obj_decls in
+                     let new_body = List.filter (fun e -> match e with
+                       Ast.Expr (Ast.Assign(var, e)) -> false
+                         | _ -> true) curr_decl.obody in
+
+                     (* Create variable assignment %var *)
+                     let assign_var = Ast.Expr (Ast.Assign("%" ^ var, (Ast.Literal x))) in
+
+                     (* Append to final body's expression list *)
+                     let final_body = assign_var::new_body in
+
+                     let new_decl = { oname = curr_decl.oname; oformals =
+                       curr_decl.oformals; olocals = curr_decl.olocals; obody =
+                         final_body } in
+
+	                 (*return Int 1? since assign succeeds?*) 
+                     (Int x, cenv, (NameMap.add odecl.oname new_decl loc_obj_decls)), 
+                       (NameMap.add var v locals, globals)
+                   else begin
+                     (Int x, cenv,
+                       loc_obj_decls), (NameMap.add var v locals, globals)
+                   end
+                 end
              | String(x) ->
 	         if NameMap.mem var locals then
 	          (*return Int 1? since assign succeeds?*) (String x, cenv,
@@ -111,8 +278,8 @@ let run (vars, objs) =
 	           (*Make decision on Int 1 vs x*) (Char x, cenv, loc_obj_decls), (locals, NameMap.add var v globals)
 	         else (Char x, cenv, loc_obj_decls), (NameMap.add var v locals, globals) 
              | _ -> raise (Failure ("Error: Cannot assign type")))
-      | (Ast.AssignObj(i, f, actuals), cenv, loc_obj_decls) ->
 
+      | (Ast.AssignObj(i, f, actuals), cenv, loc_obj_decls) ->
               (* Find the object declaration first *)
               let odecl =
                   try NameMap.find f obj_decls
@@ -133,24 +300,11 @@ let run (vars, objs) =
 	            else 
                   NameMap.add i (Pointer ("$" ^ i)) locals, globals ) in
 
-              (* Append new declaration *)
-              (*
-              let final_loc_obj_decls = 
-              ( match loc_obj_decls with
-                 []  ->     [new_odecl]
-               | [x] -> x::[new_odecl]
-               | x   -> x @ [new_odecl] ) in
-      ignore(print_endline ("size:'" ^ string_of_int (List.length
-      final_loc_obj_decls) ^ "'"));
-      *)
               (* Return new enviornment *)
               let new_obj_decls =(NameMap.add ("$" ^ i) new_odecl loc_obj_decls)
               in
-              let found_decl = NameMap.find ("$" ^ i) new_obj_decls in
-              ignore(print_endline ("oname:'" ^ found_decl.oname ^ "'"));
               (Int 1, cenv, new_obj_decls), new_env
                    
-
       | (Ast.Call("puts", [e]), cenv, loc_obj_decls) ->
 	  let (v, (cvars, cfuncs), loc_obj_decls), env = eval env (e, cenv, loc_obj_decls) in
 
@@ -200,6 +354,7 @@ let run (vars, objs) =
 
            (* Return the new environment *)
 	   ((Int 0), (cvars, ncenv), loc_obj_decls), env
+
       | (Ast.Call(f, actuals), cenv, loc_obj_decls) ->
         let (locals, globals) = env in
         let odecl =
@@ -207,7 +362,6 @@ let run (vars, objs) =
             let obj_id = (match (NameMap.find f locals) with
               Pointer(x) -> x
             | _ -> raise(Failure("not a pointer type"))) in
-          ignore(print_endline ("loname:'" ^ obj_id ^ "'"));
 	      try NameMap.find obj_id loc_obj_decls
 	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
         else if NameMap.mem f globals then
@@ -220,13 +374,13 @@ let run (vars, objs) =
 	    in
 	    let actuals, env = List.fold_left
 	      (fun (actuals, env) actual ->
-                  let (v, cenv, loc_obj_decls), env = eval env (actual, cenv,
+                  let (v, cenv, temp_obj_decls), env = eval env (actual, cenv,
                   loc_obj_decls) in v :: actuals, env)
    	      ([], env) (List.rev actuals)
 	    in
 	    try
             (* The inner (_, globals) ignores locals, and the outer ( ,_) ignores cenv *)
-	      let ((_, globals), _) = call odecl actuals globals
+	      let ((_, globals), _, temp_obj_decls) = call odecl actuals globals
 	      in ((Int 0), cenv, loc_obj_decls), (locals, globals)
 	    with ReturnException(v, globals) -> (v, cenv, loc_obj_decls), (locals, globals)
     in
@@ -306,16 +460,15 @@ let run (vars, objs) =
     } in
 
     (* Execute each statement in sequence, return updated global symbol table *)
-  let env, cenv, _ = (List.fold_left exec ((locals,globals), ([], [new_cenv]),
-  NameMap.empty)
-    odecl.obody) in
-    (env, cenv)
+    let env, cenv, new_loc_obj_decls = (List.fold_left exec ((locals,globals),
+    ([], [new_cenv]), obj_decls) odecl.obody) in
+    (env, cenv, new_loc_obj_decls)
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
-      let env, cenv = call (NameMap.find "Main" obj_decls) [] globals in
+      let env, cenv, _ = call (NameMap.find "Main" obj_decls) [] globals in
       let cvdecls, cfdecls = cenv in
       let lfdecl = List.hd (List.rev cfdecls) in
       let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =

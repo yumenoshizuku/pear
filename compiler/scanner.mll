@@ -12,8 +12,7 @@ rule token = parse
 | ']'      { RBRACE }
 
 | ','      { COMMA }
-(*| '.'      { DOT } *)
-| "int" { INT }
+| '.'      { DOT }
 
 | '+'      { PLUS }
 | '-'      { MINUS }
@@ -34,6 +33,7 @@ rule token = parse
 | "for"    { FOR }
 | "while"  { WHILE }
 | "return" { RETURN }
+| "def"    { DEFINE }
 
 | ['0'-'9']+ as lxm        { LITERAL(int_of_string lxm) }
 | '"'[^'"']+'"' as lxm     { STRLIT(String.sub lxm 1 (String.length lxm - 2)) }

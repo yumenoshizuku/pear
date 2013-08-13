@@ -1,6 +1,6 @@
 %{ open Ast %}
 
-%token LPAREN RPAREN LBRACE RBRACE COMMA DOT BLOCK DEFINE
+%token LPAREN RPAREN LBRACE RBRACE COMMA DOT DEFINE
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ INT
 %token RETURN IF ELSE FOR WHILE
@@ -64,6 +64,8 @@ stmt:
   | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
+  | ID DOT OBJECT LPAREN actuals_opt RPAREN COMMA { Set($1, $3, $5) }
+
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -72,7 +74,7 @@ expr_opt:
 expr:
     LITERAL          { Literal($1) }
   | STRLIT           { StrLit($1) }
-  | CHAR             { Char($1) }
+  | CHAR             { CharLit($1) }
   | ID               { Id($1) }
   | ID DOT ID        { ChildId($1, $3) }
   | expr PLUS   expr { Binop($1, Add,   $3) }

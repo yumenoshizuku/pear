@@ -1,6 +1,6 @@
 #!/bin/sh
 ./pear < $1;
-gcc -o prog -pthread \
+gcc -o prog -pthread -std=c99 \
 -I/usr/include/gtk-3.0 -I/usr/include/at-spi2-atk/2.0 \
 -I/usr/include/gtk-3.0 -I/usr/include/gio-unix-2.0/ \
 -I/usr/include/cairo -I/usr/include/pango-1.0 -I/usr/include/harfbuzz \

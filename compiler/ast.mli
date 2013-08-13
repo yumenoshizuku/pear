@@ -5,7 +5,7 @@ type op = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 type expr =
     Literal of int
   | StrLit of string
-  | Char of char
+  | CharLit of char
   | Id of string
   | ChildId of string * string (* Get child object *)
   | Binop of expr * op * expr
@@ -23,6 +23,7 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
+  | Set of string * string * expr list
   | Declare of string * string
 
 

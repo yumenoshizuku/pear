@@ -10,7 +10,6 @@ Main() (
     def foo,
     def tryme,
     puts("hello"),
-
     tryme = Foo(),
     puts("world"),
     puts(tryme(12)),

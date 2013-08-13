@@ -5,13 +5,13 @@ type op = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 type expr =
     Literal of int
   | StrLit of string
-  | Char of char
+  | CharLit of char
   | Id of string
- (*| ChildId of string * string*) (* Get child object *)
+  | ChildId of string * string (* Get child object *)
   | Binop of expr * op * expr
   | Assign of string * expr
   | AssignObj of string * string * expr list
- (* | ChildAssign of string * string * expr*)  (* Assign child object's value *)
+  | ChildAssign of string * string * expr  (* Assign child object's value *)
   | Call of string * expr list
   | Noexpr
 
@@ -23,8 +23,8 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
+  | Set of string * string * expr list
   | Declare of string * string
-
 
 (* Variable declaration *)
   (*
@@ -43,3 +43,4 @@ type obj_decl = {
 }
 
 type program = string list * obj_decl list
+

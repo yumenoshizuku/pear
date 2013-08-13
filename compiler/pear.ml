@@ -39,7 +39,7 @@ let run (vars, objs) =
   in
 
   (* Invoke a function and return an updated global symbol table *)
-  let rec call odecl actuals globals =
+  let rec call odecl call_cenv actuals globals =
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env : (Ast.expr * (Cast.stru_def list * Cast.var_decl list * Cast.func_decl list) * Ast.obj_decl NameMap.t) ->
@@ -117,9 +117,7 @@ let run (vars, objs) =
                 Ast.Expr(x) -> ( match x with
                     Ast.Assign(subvar, ex) -> 
                         let (value, cenv, new_obj_decls), (locals, globals) = eval env
-                        (ex, cenv, loc_obj_decls) in 
-                        ignore(match value with Int(x) -> print_endline ("val:" ^
-                        (string_of_int x)) | _ -> ());value
+                        (ex, cenv, loc_obj_decls) in value
                   | _ -> raise(Failure("undeclared identifier " ^ subvar ^ " for " ^ var)) )
               | _ -> raise(Failure("undeclared identifier " ^ subvar ^ " for " ^ var)) ) in
 
@@ -353,7 +351,7 @@ let run (vars, objs) =
 	    in
 	    try
             (* The inner (_, globals) ignores locals, and the outer ( ,_) ignores cenv *)
-	      let ((_, globals), _, temp_obj_decls) = call odecl actuals globals
+	      let ((_, globals), _, loc_obj_decls) = call odecl call_cenv actuals globals
 	      in ((Int 0), cenv, loc_obj_decls), (locals, globals)
 	    with ReturnException(v, globals) -> (v, cenv, loc_obj_decls), (locals, globals)
     in
@@ -701,26 +699,26 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 	(fun locals local -> NameMap.add local (Int 0) locals) locals odecl.olocals
     in
 
-    (* Create the main method *)
-    let new_cenv = {
-        returnType = BasicType(Cast.Int);
-        fname = "main";
-        formals = [FormalDecl (BasicType (Cast.Int), "argc");
-   		   FormalDecl (PointerToPointerType (Cast.Char), "argv")];
-        locals = [];
-        body = [];
-    } in
-
     (* Execute each statement in sequence, return updated global symbol table *)
     let env, cenv, new_loc_obj_decls = (List.fold_left exec ((locals,globals),
-    ([], [], [new_cenv]), obj_decls) odecl.obody) in
+    call_cenv, obj_decls) odecl.obody) in
     (env, cenv, new_loc_obj_decls)
   
   (* Run a program: initialize global variables to 0, find and run "main" *)
   in let globals = List.fold_left
       (fun globals vdecl -> NameMap.add vdecl (Int 0) globals) NameMap.empty vars
   in try
-      let env, cenv, _ = call (NameMap.find "Main" obj_decls) [] globals in
+      (* Create the main method *)
+      let new_cenv = {
+        returnType = BasicType(Cast.Int);
+        fname = "main";
+        formals = [FormalDecl (BasicType (Cast.Int), "argc");
+   		   FormalDecl (PointerToPointerType (Cast.Char), "argv")];
+        locals = [];
+        body = [];
+      } in
+      let env, cenv, _ = call (NameMap.find "Main" obj_decls) ([], [], [new_cenv]) [] globals in
+
       let csdecls, cvdecls, cfdecls = cenv in
       let lfdecl = List.hd (List.rev cfdecls) in
       let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; locals =

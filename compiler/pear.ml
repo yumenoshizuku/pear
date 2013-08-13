@@ -97,19 +97,26 @@ let run (vars, objs) =
 	      if NameMap.mem obj_id loc_obj_decls then 
             (* Get the object declaration *)
             let odecl = NameMap.find obj_id loc_obj_decls in
-            print_endline("TestLength:"^string_of_int (List.length odecl.obody));
             
             (* Find the assignment *)
+            (* Find user-defined variable if it exists *)
+            let oexpr = List.filter (fun e ->
+              match e with
+                Ast.Expr(x) -> (match x with
+                                Ast.Assign(xx, _) -> if xx = ("%" ^ subvar) then true else false
+                                | _ -> false)
+              | _ -> false
+            ) odecl.obody in
 
-            (*let oexpr = List.hd odecl.obody in*)
-            let oexpr = List.hd (List.filter (fun e ->
+            (* Otherwise, get the originally defined variable *)
+            let oexpr = if List.length oexpr > 0 then List.hd oexpr else begin
+              List.hd (List.filter (fun e ->
               match e with
                 Ast.Expr(x) -> (match x with
                                 Ast.Assign(xx, _) -> if xx = subvar then true else false
                                 | _ -> false)
               | _ -> false
-            ) odecl.obody) in
-            print_endline ("TestPost:" ^ subvar);
+            ) odecl.obody) end in
             let result = ( match oexpr with
                 Ast.Expr(x) -> ( match x with
                     Ast.Assign(subvar, ex) -> 
@@ -127,7 +134,6 @@ let run (vars, objs) =
               " ^ obj_id)) end
         else 
           begin raise (Failure ("undefined reference " ^ var)) end 
-        (* Define for global variables (should be almost identical logic) *)
 
       | (Ast.ChildAssign(var, subvar, e), cenv, loc_obj_decls) ->
 	    let (value, cenv, loc_obj_decls), (locals, globals) = eval env (e, cenv, loc_obj_decls) in
@@ -144,15 +150,15 @@ let run (vars, objs) =
             let new_body = List.filter (fun e -> match e with
                 Ast.Expr(x) -> (match x with
                                   Ast.Assign(i, _) -> 
-                                    if i = ("%" ^ var) then false else true
+                                    if i = ("%" ^ subvar) then false else true
                                 | _ -> true)
               | _ -> false) odecl.obody in
 
             (* Create variable assignment %var *)
             let assign_var = ( match value with
-                Int(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Literal x))) 
-              | String(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.StrLit x)))
-              | Char(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Char x)))
+                Int(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.Literal x))) 
+              | String(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.StrLit x)))
+              | Char(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.Char x)))
               | _ -> raise(Failure("cannot assign a non-primitive")) ) in
 
             (* Append to final body's expression list *)
@@ -164,38 +170,7 @@ let run (vars, objs) =
             (* Return value *)
             (NameMap.add obj_id new_decl loc_obj_decls)
 	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
-
-          else if NameMap.mem var globals then
-            let obj_id = (match (NameMap.find var globals) with
-              Pointer(x) -> x
-            | _ -> raise(Failure("not a pointer type"))) in
-	      try 
-            (* Get the object declaration *)
-            let odecl = NameMap.find obj_id loc_obj_decls in
-            
-            (* Remove previous declaration *)
-            let new_body = List.filter (fun e -> match e with
-                Ast.Expr(x) -> false 
-              | _ -> true) odecl.obody in
-
-            (* Create variable assignment %var *)
-            let assign_var = ( match value with
-                Int(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Literal x))) 
-              | String(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.StrLit x)))
-              | Char(x) -> Ast.Expr (Ast.Assign("%" ^ var, (Ast.Char x)))
-              | _ -> raise(Failure("cannot assign a non-primitive")) ) in
-
-            (* Append to final body's expression list *)
-            let final_body = assign_var::new_body in
-            let new_decl = { oname = odecl.oname; oformals =
-              odecl.oformals; olocals = odecl.olocals; obody =
-              final_body } in
-
-            (* Return value *)
-            (NameMap.add obj_id new_decl loc_obj_decls)
-	      with Not_found -> raise (Failure ("undefined function " ^ obj_id))
-
-          else raise (Failure ("undefined reference " ^ var))              
+          else raise (Failure ("undefined reference " ^ subvar ^ " for " ^ var))              
         in
         (Int 1, cenv, new_loc_obj_decls), (locals, globals)
 
@@ -305,7 +280,7 @@ let run (vars, objs) =
 	            else 
                   NameMap.add i (Pointer ("$" ^ i)) locals, globals ) in
 
-              (* Return new enviornment *)
+              (* Copy object definition and return new enviornment *)
               let new_obj_decls =(NameMap.add ("$" ^ i) new_odecl loc_obj_decls)
               in
               (Int 1, cenv, new_obj_decls), new_env

@@ -3,15 +3,15 @@ Foo(bar) (
     puts(bar),
     return 2+4,
     works = 22,
-
     fun = 69,
+    return 11,
 )
 Main() (
     def foo,
     def tryme,
     puts("hello"),
 
-    tryme = Foo(1),
+    tryme = Foo(),
     puts("world"),
     puts(tryme(12)),
     puts("--"),
@@ -20,12 +20,16 @@ Main() (
     puts(tryme.fun),
     puts("wwwwwwww"),
     puts(tryme.works),
+    tryme.works = 222,
+    puts(tryme.works),
 
     boo = 5+((2+7)*9),
     foo = "are you?",
     puts(foo),
     puts(boo),
     id = 4,
+
     (*boo(3),*)
     [puts("hi"),puts("hey"),]
 )
+

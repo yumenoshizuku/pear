@@ -648,7 +648,7 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 	[Cast.Expr (Call("gtk_widget_show",[Id id]))]
 		| (_, "Showall", _) ->
 	[Cast.Expr (Call("gtk_widget_show_all",[Id id]))]
-		| (String("Checkbox"), "Label", [Ast.StrLit s]) ->
+		| (String("CheckBox"), "Label", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_button_set_label",
 	[Cast.Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]		
 		| (String("RadioButton"), "Label", [Ast.StrLit s]) ->
@@ -660,10 +660,10 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 		| (String("ComboBox"), "Append", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_combo_box_append_text ",
 	[Cast.Call("GTK_COMBO",[Cast.Id id]); StrLit s])))]	
-		| (String ("Checkbox"), "Active", [Ast.Id("yes")]) ->		
+		| (String ("CheckBox"), "Active", [Ast.Id("yes")]) ->		
 	[Cast.Expr (Call("gtk_toggle_button_set_active",
 	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("TRUE")]))]
-		| (String ("Checkbox"), "Active", [Ast.Id("no")]) ->		
+		| (String ("CheckBox"), "Active", [Ast.Id("no")]) ->		
 	[Cast.Expr (Call("gtk_toggle_button_set_active",
 	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("FALSE")]))]	
 

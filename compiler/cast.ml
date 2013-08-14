@@ -14,7 +14,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type uop = Ref
 
-type mytypes = Int | Char | Void | GtkWidget | GPointer | GChar | GList | Struct of string
+type mytypes = Int | Char | Void | GtkWidget | GPointer | GdkColor | GtkToolItem | GChar | GList | Struct of string
 
 
 (* Expressions *)
@@ -126,6 +126,8 @@ let rec string_of_datatype = function
    | GPointer -> "gpointer"
    | GChar -> "gchar"
    | GList -> "GList"
+   | GdkColor -> "GdkColor"
+   | GtkToolItem -> "GtkToolItem"
    | Struct (name) -> "struct " ^ name
 
   

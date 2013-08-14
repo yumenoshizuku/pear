@@ -1,0 +1,19 @@
+Main()
+(
+wi.Window(),
+wi.Move(300,200),
+wi.Size(400,500),
+wi.Resizable(no),
+wi.Title("this is a title"),
+vb.Vbox(),
+wi.Contain(vb),
+tb.Toolbar(),
+tb.Style(icon),
+new.ToolButton(new),
+edit.ToolButton(edit),
+tb.Insert(new),
+tb.Insert(edit),
+vb.BoxPack(tb),
+wi.Showall(),
+)
+

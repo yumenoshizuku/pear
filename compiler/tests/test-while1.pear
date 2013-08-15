@@ -1,6 +1,6 @@
 Main()
 (
-  i = 4,
+  i = 5,
   while (i > 0) [
     puts(i),
     i = i - 1,

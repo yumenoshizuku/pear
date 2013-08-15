@@ -1,0 +1,6 @@
+Main()
+(
+  puts(42),
+  puts(71),
+  puts(1),
+)

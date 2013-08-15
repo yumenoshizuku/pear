@@ -1,0 +1,14 @@
+Fun(x, y ,z)
+(
+  return 0,
+)
+
+Main()
+(
+  def i,
+  fun = Fun(),
+  fun(i = 2, i = i+1, puts(i)),
+
+  puts(i),
+)
+

@@ -364,7 +364,7 @@ let run (vars, objs) =
 	    in
 	    try
             (* The inner (_, globals) ignores locals, and the outer ( ,_) ignores cenv *)
-	      let ((_, globals), _, loc_obj_decls) = call odecl call_cenv actuals globals
+	      let ((locals, globals), _, loc_obj_decls) = call odecl call_cenv actuals globals
 	      in ((Int 0), cenv, loc_obj_decls), (locals, globals)
 	    with ReturnException(v, globals) -> (v, cenv, loc_obj_decls), (locals, globals)
     in

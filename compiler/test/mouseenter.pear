@@ -1,0 +1,14 @@
+Main()(
+window.Window(),
+window.Position(center),
+window.Size(230, 150),
+window.Title("enter signal"),
+fixed.Fixed(),
+window.Contain(fixed),
+button.Button("show"),
+button.Size(80, 35),
+button.FixPos(fixed, 50, 50),
+buttoncolor.MouseEnter(),
+button.EnterColor(buttoncolor(27000, 30325, 34181)),
+window.Showall(),
+)

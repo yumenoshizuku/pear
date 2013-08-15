@@ -1,0 +1,14 @@
+Main()(
+window.Window(),
+window.Title("hello world"),
+window.Size(180, 150),
+frame.Fixed(),
+window.Contain(frame),
+button.Button("click"),
+button.Size(80, 35),
+button.FixPos(frame, 50, 80),
+label.Label(),
+label.FixPos(frame, 70, 50),
+button.ClickDisplay(helloworld(label, "hello world!")),
+window.Showall(),
+)

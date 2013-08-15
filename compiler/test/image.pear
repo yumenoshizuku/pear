@@ -1,0 +1,10 @@
+Main()(
+window.Window(),
+window.Size(1026, 1026),
+window.Title("Chii"),
+window.Resizable(no),
+window.BorderWidth(2),
+image.Image("chii.jpg"),
+window.Contain(image),
+window.Showall(),
+)

@@ -17,6 +17,7 @@ open Printf
 (* The primitive types *)
 type primitive =
     Int of int
+  | Float of float
   | String of string
   | Char of char
   | Pointer of string
@@ -48,6 +49,7 @@ let run (vars, objs) =
 
         (* Primitive expressions *)
 	(Ast.Literal(i), cenv, loc_obj_decls) -> (Int i, cenv, loc_obj_decls), env
+	  | (Ast.FloLit(i), cenv, loc_obj_decls) -> (Float i, cenv, loc_obj_decls), env
       | (Ast.StrLit(i), cenv, loc_obj_decls) -> (String i, cenv, loc_obj_decls), env
       | (Ast.CharLit(i), cenv, loc_obj_decls) -> (Char i, cenv, loc_obj_decls), env
 
@@ -81,6 +83,13 @@ let run (vars, objs) =
 	               | Ast.Leq -> boolean (x1 <= x2)
          	       | Ast.Greater -> boolean (x1 > x2)
 	               | Ast.Geq -> boolean (x1 >= x2)), cenv, loc_obj_decls)
+			 | Float(x1), Float(x2) ->
+			(Float (match op with
+	                 Ast.Add -> x1 +. x2
+	               | Ast.Sub -> x1 -. x2
+	               | Ast.Mul -> x1 *. x2
+	               | Ast.Div -> x1 /. x2
+				   | _ -> raise (Failure("Error: invalid operation on floats."))), cenv, loc_obj_decls)
              | _ -> raise (Failure("Error: invalid operation on a binary expression."))), env
 
       | (Ast.ChildId(var, subvar), cenv, loc_obj_decls) ->
@@ -151,6 +160,7 @@ let run (vars, objs) =
             (* Create variable assignment %var *)
             let assign_var = ( match value with
                 Int(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.Literal x))) 
+			  | Float(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.FloLit x))) 
               | String(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.StrLit x)))
               | Char(x) -> Ast.Expr (Ast.Assign("%" ^ subvar, (Ast.CharLit x)))
               | _ -> raise(Failure("cannot assign a non-primitive")) ) in
@@ -296,6 +306,8 @@ let run (vars, objs) =
                     (* Match parameter with result *)
                     Int(x) -> 
                       Cast.Expr (Call("printf", [StrLit "%d\\n"; Literal x]))
+				  | Float(x) ->
+					  Cast.Expr (Call("printf", [StrLit "%f\\n"; FloLit x]))
                   | String(x) -> 
                       Cast.Expr (Call("printf", [StrLit "%s\\n"; StrLit x]))
                   | Pointer(x) -> 
@@ -319,6 +331,7 @@ let run (vars, objs) =
           (* Interpret *)
           (match v with
              Int(x) -> print_endline (string_of_int x)
+		   | Float(x) -> print_endline (string_of_float x)
            | String(x) -> print_endline x
            | Pointer(x) -> print_endline x
            | Char(x) -> print_endline (String.make 1 x));
@@ -417,10 +430,8 @@ let run (vars, objs) =
              			locals= (
 	let print =
 		(match (obj, args) with
-(* Doesn't do anything for Display function types *)
-			  ("Display", _) -> [] 
 (* Declares array type widgets *)
-			| ("CheckBoxArray", [Ast.Literal n]) ->
+			  ("CheckBoxArray", [Ast.Literal n]) ->
         [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Literal n))]
 			| ("ButtonArray", [Ast.Literal n]) ->
         [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Literal n))]
@@ -477,6 +488,8 @@ let run (vars, objs) =
 	[Cast.Expr (Assign (id, (Call ("gtk_button_new_with_label", [StrLit s]))))]
 		| ("Label", []) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [Null]))))]
+		| ("Label", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [StrLit s]))))]
 		| ("CheckBox", []) ->
 	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new", []))))]	
 		| ("CheckBox", [Ast.StrLit s]) ->
@@ -545,7 +558,10 @@ let run (vars, objs) =
 	 [Cast.Expr (Assign (id, (Call ("gtk_statusbar_new", []))))]
 		| ("Image", [Ast.StrLit s]) ->
 	 [Cast.Expr (Assign (id, (Call ("gtk_image_new_from_file", [StrLit s]))))]
-		| ("Display", []) -> []
+		| ("Align", [Ast.FloLit x; Ast.FloLit y; Ast.FloLit h; Ast.FloLit w]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_alignment_new", [FloLit x; FloLit y; FloLit h; FloLit w]))))]
+		| ("Align", [Ast.Literal x; Ast.Literal y; Ast.Literal h; Ast.Literal w]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_alignment_new", [Literal x; Literal y; Literal h; Literal w]))))]
 		| _  -> raise (Failure ("Error: Object not supported."))) in
                  match lfdecl.body with
                    []  ->     print
@@ -574,8 +590,8 @@ let addfdecl = {
    		   FormalDecl (BasicType (GPointer), wid)];
         locals = [];
         body = (
-		match ((if NameMap.mem fid plocals then NameMap.find fid plocals else NameMap.find fid pglobals), (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals), Ast.StrLit(s)) with
-		  (String("Display"), String("Label"), Ast.StrLit(s)) ->
+		match ((if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals), Ast.StrLit(s)) with
+		  (String("Label"), Ast.StrLit(s)) ->
 	[(Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); StrLit s])))]
 		
 		| _ -> raise (Failure ("Error: Callback function not supported."))
@@ -615,7 +631,7 @@ let addfdecl = {
 	[Cast.Expr(Assign("color.red", Literal rd));
 	Expr(Assign("color.green", Literal gr));
 	Expr(Assign("color.blue", Literal bl));
-	Expr(Call("gtk_widget_modify_bg", [Id id; ConstLit "GTK_STATE_PRELIGHT"; ConstLit "&color"]))]
+	Expr(Call("gtk_widget_modify_bg", [Id "widget"; ConstLit "GTK_STATE_PRELIGHT"; ConstLit "&color"]))]
 );}				
  in
 		let lfdecl = List.hd (List.rev f) in
@@ -648,11 +664,11 @@ let addfdecl = {
         fname = fid;
         formals = [FormalDecl (PointerType (GtkWidget), "widget");
    		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [];
+        locals = [Cast.OneDArrDecl(BasicType(Cast.Char), "str", Literal 10)];
         body = (
 		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
 		  String("Label") ->
-	[Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Call("itoa", [Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL",[Id wid])])]), Add, Literal 1)])]	))]
+	[Cast.Expr(Call("sprintf", [Id "str"; StrLit "%d"; Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])])]) , Add, Literal 1) ])); Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Id "str"]	))]
 		
 		| _ -> raise (Failure ("Error: Callback function not supported."))
 		);}				
@@ -688,11 +704,11 @@ let addfdecl = {
         fname = fid;
         formals = [FormalDecl (PointerType (GtkWidget), "widget");
    		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [];
+        locals = [Cast.OneDArrDecl(BasicType(Cast.Char), "str", Literal 10)];
         body = (
 		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
 		  String("Label") ->
-	[Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Call("itoa", [Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL",[Id wid])])]), Sub, Literal 1)])]	))]
+[Cast.Expr(Call("sprintf", [Id "str"; StrLit "%d"; Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])])]) ,Sub, Literal 1) ])); Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Id "str"]	))]
 		
 		| _ -> raise (Failure ("Error: Callback function not supported."))
 		);}				
@@ -740,31 +756,34 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 	[Call("GTK_WINDOW",[Id id]); Literal w; Literal h]))]
 		| (_, "Size", [Ast.Literal w; Ast.Literal h]) ->
 	[Cast.Expr (Call("gtk_widget_set_size_request",
-	[Call("GTK_WINDOW",[Id id]); Literal w; Literal h]))]
+	[Id id; Literal w; Literal h]))]
 		| (String("Window"), "Resizable", [Ast.Id("no")]) ->
 	[Cast.Expr (Call("gtk_window_set_resizable",
 	[Call("GTK_WINDOW",[Id id]); ConstLit("TRUE")]))]
 		| (String("Frame"), "Label", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_frame_set_label",
-	[Cast.Call("GTK_FRAME",[Cast.Id id]); StrLit s])))]
+	[Call("GTK_FRAME",[Cast.Id id]); StrLit s])))]
 		| (String("Toolbar"), "Style", [Ast.Id("icon")]) ->
 	[(Cast.Expr (Call("gtk_toolbar_set_style",
-	[Cast.Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_ICONS")])))]
+	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_ICONS")])))]
 		| (String("Toolbar"), "Style", [Ast.Id("text")]) ->
 	[(Cast.Expr (Call("gtk_toolbar_set_style",
-	[Cast.Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_TEXT")])))]
+	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_TEXT")])))]
 		| (String("Toolbar"), "Style", [Ast.Id("both")]) ->
 	[(Cast.Expr (Call("gtk_toolbar_set_style",
-	[Cast.Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_BOTH")])))]
+	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_BOTH")])))]
 		| (String("Toolbar"), "Insert", [Ast.Id wid]) ->
 	[(Cast.Expr (Call("gtk_toolbar_insert",
-	[Cast.Call("GTK_TOOLBAR",[Cast.Id id]); Cast.Call("GTK_TOOL_ITEM",[Cast.Id wid]); Literal (-1)])))]
+	[Call("GTK_TOOLBAR",[Cast.Id id]); Call("GTK_TOOL_ITEM",[Cast.Id wid]); Literal (-1)])))]
+		| (String("Statusbar"), "Show", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_statusbar_push",
+	[Call("GTK_STATUSBAR",[Cast.Id id]); Call("gtk_statusbar_get_context_id",[Call("GTK_STATUSBAR",[Cast.Id id]); StrLit ""]); StrLit s])))]
 		| (String("Button"), "Label", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_button_set_label",
-	[Cast.Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
+	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
 		| (String("Label"), "Text", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_label_set_text ",
-	[Cast.Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]
+	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]
 		| (String("Frame"), "Shadow", [Ast.Id s]) ->
 		(match s with
 		  	"in" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
@@ -802,7 +821,7 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 		if (NameMap.find wid plocals = String("Fixed")) 
 		or (NameMap.find wid pglobals = String("Fixed")) then
 		[Cast.Expr (Call("gtk_fixed_put",
-	[Cast.Call("GTK_FIXED",[Id wid]); Id id; Literal x; Literal y]))]
+	[Call("GTK_FIXED",[Id wid]); Id id; Literal x; Literal y]))]
 		else raise (Failure ("Error: " ^ wid ^ " is not a Fixed widget."))
 		| (_, "BoxPack", [Ast.Id wid]) ->
 		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
@@ -849,16 +868,16 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 	[Cast.Expr (Call("gtk_widget_show_all",[Id id]))]
 		| (String("CheckBox"), "Label", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_button_set_label",
-	[Cast.Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]		
+	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]		
 		| (String("RadioButton"), "Label", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_button_set_label",
-	[Cast.Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
+	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
 		| (String("TextEntry"), "Text", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_entry_set_text ",
-	[Cast.Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]	
+	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]	
 		| (String("ComboBox"), "Append", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_combo_box_append_text ",
-	[Cast.Call("GTK_COMBO",[Cast.Id id]); StrLit s])))]	
+	[Call("GTK_COMBO",[Cast.Id id]); StrLit s])))]	
 		| (String ("CheckBox"), "Active", [Ast.Id("yes")]) ->		
 	[Cast.Expr (Call("gtk_toggle_button_set_active",
 	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("TRUE")]))]

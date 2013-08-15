@@ -14,13 +14,14 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq
 
 type uop = Ref
 
-type mytypes = Int | Char | Void | GtkWidget | GPointer | GdkColor | GtkToolItem | GChar | GList | Struct of string
+type mytypes = Int | Char | Void | Float | GtkWidget | GPointer | GdkColor | GtkToolItem | GChar | GList | Struct of string
 
 
 (* Expressions *)
 type expr =
     Literal of int
   | Id of string
+  | FloLit of float
   | CharLit of char
   | StrLit of string
   | ConstLit of string
@@ -79,6 +80,7 @@ type program =  stru_def list * var_decl list * func_decl list
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
+  | FloLit(s) -> string_of_float s
   | CharLit(c) -> "'" ^ (String.make 1 c) ^ "'"
   | StrLit(s) -> "\"" ^ s ^ "\"" 
   | ConstLit(s) -> s
@@ -121,6 +123,7 @@ let rec string_of_stmt = function
 let rec string_of_datatype = function
      Int -> "int"
    | Char -> "char"
+   | Float -> "float"
    | Void -> "void" 
    | GtkWidget -> "GtkWidget"
    | GPointer -> "gpointer"

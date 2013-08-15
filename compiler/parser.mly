@@ -5,6 +5,7 @@
 %token EQ NEQ LT LEQ GT GEQ INT
 %token RETURN IF ELSE FOR WHILE
 %token <int> LITERAL
+%token <float> FLOLIT
 %token <string> STRLIT
 %token <char> CHAR
 %token <string> ID
@@ -73,6 +74,7 @@ expr_opt:
 
 expr:
     LITERAL          { Literal($1) }
+  | FLOLIT			  { FloLit($1) }
   | STRLIT           { StrLit($1) }
   | CHAR             { CharLit($1) }
   | ID               { Id($1) }

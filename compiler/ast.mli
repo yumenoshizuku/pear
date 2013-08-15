@@ -4,6 +4,7 @@ type op = Add | Sub | Mul | Div | Equal | Neq | Less | Leq | Greater | Geq
 (* Expression as the main type *)
 type expr =
     Literal of int
+  | FloLit of float
   | StrLit of string
   | CharLit of char
   | Id of string

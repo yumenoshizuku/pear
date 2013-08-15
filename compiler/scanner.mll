@@ -36,6 +36,7 @@ rule token = parse
 | "def"    { DEFINE }
 
 | ['0'-'9']+ as lxm        { LITERAL(int_of_string lxm) }
+| ['0'-'9']*'.'['0'-'9']+ as lxm { FLOLIT(float_of_string lxm) }
 | '"'[^'"']+'"' as lxm     { STRLIT(String.sub lxm 1 (String.length lxm - 2)) }
 | '''[^''']''' as charlit  { CHAR(charlit.[1]) }
 | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }

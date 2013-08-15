@@ -1,0 +1,35 @@
+Pre-presentation
+=================
+1. Presentation: (suggestion-Rui)
+  - Must meet requirements from prof (find out what they are)
+  - Make it look nice!
+
+1. Test cases: (suggestion-Fanxing)
+  - As many interesting Gtk tests as possible (Fanxing and Rui)
+  - Fixing testall.sh (Risto)
+  - Fixing other tests cases (Whoever gets to it first)
+
+2. Adding remaining syntax: (-Risto)
+  - Adding 'tell' command as a function call: tell("program", "command")
+  - Adding gets, which must be either recognize just strings, or explicitly
+    any type:
+    - If any type, then dynInt, dynString, and dynChar will be defined so
+      that:
+      - Binop doesn't evaluate the expression but instead pretty prints the line
+    - If just string, then the dynamic types aren't necessary
+  - Adding lists, which would have a way to be called (like args[i]), stored
+    and read.
+
+
+Post-presentation
+==================
+
+1. Final report:
+  - Must meet requirements from prof (find out what they are)
+
+2. Update LRM:
+  - Explain how the Pear plugin works a little better.
+  - Improve and standardize the notation throughout the doc (the plugin's is not
+    like the language's notation).
+  - Update the syntax to what it has become (our current language specs)
+

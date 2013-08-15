@@ -364,7 +364,7 @@ let run (vars, objs) =
 	    in
 	    try
             (* The inner (_, globals) ignores locals, and the outer ( ,_) ignores cenv *)
-	      let ((_, globals), _, loc_obj_decls) = call odecl call_cenv actuals globals
+	      let ((locals, globals), _, loc_obj_decls) = call odecl call_cenv actuals globals
 	      in ((Int 0), cenv, loc_obj_decls), (locals, globals)
 	    with ReturnException(v, globals) -> (v, cenv, loc_obj_decls), (locals, globals)
     in
@@ -734,6 +734,56 @@ in let ncenv =
 	in (env, (st, g, ncenv), loc_obj_decls))
 else raise (Failure ("Error: Unknown widget " ^ wid))
 )
+			| ("Calcbutton",[Ast.Literal n; Ast.Call (fid, [Ast.Id wid])]) -> (
+if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
+then (
+(* Widget to be changed exists, wid is label *)
+let addfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = fid;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), wid)];
+        locals = [Cast.OneDArrDecl(PointerType(Cast.GChar), "result", Literal 1)];
+        body = (
+		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
+		  String("Label") ->
+	[Cast.If (
+Cast.Call("g_str_has_prefix", [Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); StrLit "="]), 
+
+Expr(Call("__returnValue__", [Id wid])), 
+
+Cast.If(Call("g_file_get_contents", [StrLit "out.txt"; Id "result"; Null; Null]), 
+
+Cast.Block[Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL", [Id wid]) ; Null]));
+Cast.Expr(Call("g_remove", [StrLit "out.txt"]));
+Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL", [Id wid]); Call("g_strconcat", [Call("gtk_label_get_text", [Call("GTK_LABEL",[Id wid])]); Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); Null])]))],
+Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL",[Id wid]);Call("g_strconcat", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])]) ; Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); Null])]))
+)
+)]
+		| _ -> raise (Failure ("Error: Callback function not supported."))
+		);}				
+ in
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = { returnType = lfdecl.returnType; 
+			fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+				let print =
+	[Cast.For(Assign("int i", Literal 0), Binop(Id "i",Less,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Expr(Call("g_signal_connect",
+	[Call("G_OBJECT",[OneDArrSubs(Id id, Id "i")]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid])))]
+ in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )}
+in let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [addfdecl] @ [nfdecl]
+             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls))
+else raise (Failure ("Error: Unknown widget " ^ wid))
+)
 (* Set properties *)
  			| _ -> (
 
@@ -781,6 +831,9 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 		| (String("Button"), "Label", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_button_set_label",
 	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
+		| (String("ButtonArray"), "Label", [Ast.Literal i; Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Call("GTK_BUTTON",[Cast.OneDArrSubs(Id id, Literal i)]); StrLit s])))]
 		| (String("Label"), "Text", [Ast.StrLit s]) ->
 	[(Cast.Expr (Call("gtk_label_set_text ",
 	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]
@@ -811,6 +864,11 @@ else raise (Failure ("Error: Unknown widget " ^ wid))
 		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
 	[Cast.Expr (Call("gtk_grid_attach",
 	[Call("GTK_GRID",[Id id]); Id wid; Literal x; Literal y; Literal c; Literal r]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (String("ButtonArray"), "AttachTo", [Ast.Literal i; Ast.Id wid; Ast.Literal x; Ast.Literal y; Ast.Literal c; Ast.Literal r]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_grid_attach",
+	[Call("GTK_GRID",[Id wid]); OneDArrSubs(Id id, Literal i); Literal x; Literal y; Literal c; Literal r]))]
 		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
 		| (_, "Contain", [Ast.Id wid]) ->
 		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 

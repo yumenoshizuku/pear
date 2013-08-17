@@ -1,0 +1,38 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+
+
+void helloworld(GtkWidget* widget, gpointer label)
+{
+	gtk_label_set_text (GTK_LABEL(label), "hello world!");
+}
+
+
+int main(int argc, char** argv)
+{
+	GtkWidget* window;
+	GtkWidget* frame;
+	GtkWidget* button;
+	GtkWidget* label;
+	
+	gtk_init(&argc, &argv);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+	gtk_window_set_title(GTK_WINDOW(window), "hello world");
+	gtk_window_set_default_size(GTK_WINDOW(window), 180, 150);
+	frame = gtk_fixed_new();
+	gtk_container_add(GTK_CONTAINER(window), frame);
+	button = gtk_button_new_with_label("click");
+	gtk_widget_set_size_request(button, 80, 35);
+	gtk_fixed_put(GTK_FIXED(frame), button, 50, 80);
+	label = gtk_label_new (NULL);
+	gtk_fixed_put(GTK_FIXED(frame), label, 70, 50);
+	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(helloworld), label);
+	gtk_widget_show_all(window);
+	gtk_main();
+	return 0;
+}
+

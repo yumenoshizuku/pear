@@ -1,0 +1,13 @@
+Foo(bar) (
+    fb1 = 22,
+    fb2 = 69,
+    return bar,
+)
+Main() (
+    tryme = Foo(),
+    puts(tryme(12)),
+    puts(tryme(8)),
+    puts(tryme.fb1),
+    puts(tryme.fb2),
+)
+

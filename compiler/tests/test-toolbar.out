@@ -1,0 +1,53 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+
+
+int main(int argc, char** argv)
+{
+	GtkWidget* window;
+	GtkWidget* vb;
+	GtkWidget* fixed;
+	GtkWidget* toolbar;
+	GtkToolItem* new;
+	GtkToolItem* edit;
+	GtkToolItem* copy;
+	GtkToolItem* cut;
+	GtkToolItem* paste;
+	GtkWidget* status;
+	
+	gtk_init(&argc, &argv);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+	gtk_window_move(GTK_WINDOW(window), 300, 200);
+	gtk_window_set_default_size(GTK_WINDOW(window), 300, 200);
+	gtk_window_set_resizable(GTK_WINDOW(window), TRUE);
+	gtk_window_set_title(GTK_WINDOW(window), "toolbar & statusbar");
+	vb = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+	gtk_box_set_homogeneous(GTK_BOX(vb), FALSE);
+	fixed = gtk_fixed_new();
+	gtk_container_add(GTK_CONTAINER(window), vb);
+	toolbar = gtk_toolbar_new();
+	gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_ICONS);
+	new = gtk_tool_button_new_from_stock(GTK_STOCK_NEW);
+	edit = gtk_tool_button_new_from_stock(GTK_STOCK_EDIT);
+	copy = gtk_tool_button_new_from_stock(GTK_STOCK_COPY);
+	cut = gtk_tool_button_new_from_stock(GTK_STOCK_CUT);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(cut), -1);
+	paste = gtk_tool_button_new_from_stock(GTK_STOCK_PASTE);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(paste), -1);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(new), -1);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(edit), -1);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(copy), -1);
+	status = gtk_statusbar_new();
+	gtk_statusbar_push(GTK_STATUSBAR(status), gtk_statusbar_get_context_id(GTK_STATUSBAR(status), ""), "try click something");
+	gtk_box_pack_start(GTK_BOX(vb), toolbar, FALSE, FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vb), fixed, TRUE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(vb), status, FALSE, TRUE, 5);
+	gtk_widget_show_all(window);
+	gtk_main();
+	return 0;
+}
+

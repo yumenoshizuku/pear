@@ -1,0 +1,101 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+
+
+void calc(GtkWidget* widget, gpointer label)
+{
+	gchar* result[1];
+	if (g_str_has_prefix(gtk_button_get_label(GTK_BUTTON(widget)), "="))
+	__returnValue__(label);
+else
+		if (g_file_get_contents("out.txt", result, NULL, NULL))
+{
+		gtk_label_set_text(GTK_LABEL(label), NULL);
+	g_remove("out.txt");
+	gtk_label_set_text(GTK_LABEL(label), g_strconcat(gtk_label_get_text(GTK_LABEL(label)), gtk_button_get_label(GTK_BUTTON(widget)), NULL));
+		}
+else
+		gtk_label_set_text(GTK_LABEL(label), g_strconcat(gtk_label_get_text(GTK_LABEL(label)), gtk_button_get_label(GTK_BUTTON(widget)), NULL));
+}
+
+
+int main(int argc, char** argv)
+{
+	GtkWidget* window;
+	GtkWidget* label;
+	GtkWidget* shadow;
+	GtkWidget* vbox;
+	GtkWidget* table;
+	GtkWidget* button[20];
+	
+	gtk_init(&argc, &argv);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+	label = gtk_label_new (NULL);
+	shadow = gtk_frame_new(NULL);
+	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+	gtk_box_set_homogeneous(GTK_BOX(vbox), FALSE);
+	table = gtk_grid_new();
+	for (int i = 1 ; i <= 20 ; i = i + 1) {
+		button[i-1] = gtk_button_new();
+		}
+	gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+	gtk_window_set_default_size(GTK_WINDOW(window), 300, 250);
+	gtk_window_set_title(GTK_WINDOW(window), "GTK Calculator");
+	gtk_frame_set_shadow_type(GTK_FRAME(shadow), GTK_SHADOW_IN);
+	gtk_container_add(GTK_CONTAINER(shadow), label);
+	gtk_container_set_border_width(GTK_CONTAINER(window), 5);
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+	gtk_grid_set_row_homogeneous(GTK_GRID(table), TRUE);
+	gtk_grid_set_column_homogeneous(GTK_GRID(table), TRUE);
+	gtk_box_pack_start(GTK_BOX(vbox), shadow, TRUE, TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), table, TRUE, TRUE, 5);
+	gtk_button_set_label(GTK_BUTTON(button[0]), "7");
+	gtk_button_set_label(GTK_BUTTON(button[1]), "8");
+	gtk_button_set_label(GTK_BUTTON(button[2]), "9");
+	gtk_button_set_label(GTK_BUTTON(button[3]), "/");
+	gtk_button_set_label(GTK_BUTTON(button[4]), "%");
+	gtk_button_set_label(GTK_BUTTON(button[5]), "4");
+	gtk_button_set_label(GTK_BUTTON(button[6]), "5");
+	gtk_button_set_label(GTK_BUTTON(button[7]), "6");
+	gtk_button_set_label(GTK_BUTTON(button[8]), "*");
+	gtk_button_set_label(GTK_BUTTON(button[9]), "^");
+	gtk_button_set_label(GTK_BUTTON(button[10]), "1");
+	gtk_button_set_label(GTK_BUTTON(button[11]), "2");
+	gtk_button_set_label(GTK_BUTTON(button[12]), "3");
+	gtk_button_set_label(GTK_BUTTON(button[13]), "-");
+	gtk_button_set_label(GTK_BUTTON(button[14]), "(");
+	gtk_button_set_label(GTK_BUTTON(button[15]), "0");
+	gtk_button_set_label(GTK_BUTTON(button[16]), ".");
+	gtk_button_set_label(GTK_BUTTON(button[17]), "=");
+	gtk_button_set_label(GTK_BUTTON(button[18]), "+");
+	gtk_button_set_label(GTK_BUTTON(button[19]), ")");
+	gtk_grid_attach(GTK_GRID(table), button[0], 0, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[1], 1, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[2], 2, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[3], 3, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[4], 4, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[5], 0, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[6], 1, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[7], 2, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[8], 3, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[9], 4, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[10], 0, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[11], 1, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[12], 2, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[13], 3, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[14], 4, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[15], 0, 3, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[16], 1, 3, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[17], 2, 3, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[18], 3, 3, 1, 1);
+	gtk_grid_attach(GTK_GRID(table), button[19], 4, 3, 1, 1);
+	for (int i = 0 ; i < 20 ; i = i + 1) 	g_signal_connect(G_OBJECT(button[i]), "clicked", G_CALLBACK(calc), label);
+	gtk_widget_show_all(window);
+	gtk_main();
+	return 0;
+}
+

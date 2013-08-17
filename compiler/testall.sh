@@ -107,13 +107,7 @@ if [ $# -ge 1 ]
 then
     files=$@
 else
-    if [ $testc -eq 0 ] ; then 
-        # Basic tests
-        files="testsi/fail-*.pear testsi/test-*.pear"
-    else
-        # Test Gtk
-        files="testsgtk/fail-*.pear testsgtk/test-*.pear"
-    fi
+    files="tests/fail-*.pear tests/test-*.pear"
 fi
 
 for file in $files

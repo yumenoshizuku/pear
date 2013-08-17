@@ -1,0 +1,21 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+
+
+int main(int argc, char** argv)
+{
+	
+	gtk_init(&argc, &argv);
+	printf("%d\n", 138);
+	printf("%d\n", 30);
+	printf("%d\n", 42);
+	printf("%d\n", 38);
+	printf("%d\n", 222);
+	printf("%d\n", 21);
+	gtk_main();
+	return 0;
+}
+

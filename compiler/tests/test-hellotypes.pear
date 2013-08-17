@@ -1,0 +1,8 @@
+Main()
+(
+  puts("Hello world!"),
+  puts("hi"),
+  puts('a'),
+  puts(71),
+  puts(1),
+)

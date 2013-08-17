@@ -1,0 +1,7 @@
+Main()
+(
+  for (i = 0 , i < 5 , i = i + 1) [
+    puts(i),
+  ]
+  puts(42),
+)

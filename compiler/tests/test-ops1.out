@@ -1,0 +1,39 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+
+
+int main(int argc, char** argv)
+{
+	
+	gtk_init(&argc, &argv);
+	printf("%d\n", 3);
+	printf("%d\n", -1);
+	printf("%d\n", 2);
+	printf("%d\n", 50);
+	printf("%d\n", 99);
+	printf("%d\n", 0);
+	printf("%d\n", 1);
+	printf("%d\n", 99);
+	printf("%d\n", 1);
+	printf("%d\n", 0);
+	printf("%d\n", 99);
+	printf("%d\n", 1);
+	printf("%d\n", 0);
+	printf("%d\n", 99);
+	printf("%d\n", 1);
+	printf("%d\n", 1);
+	printf("%d\n", 0);
+	printf("%d\n", 99);
+	printf("%d\n", 0);
+	printf("%d\n", 1);
+	printf("%d\n", 99);
+	printf("%d\n", 0);
+	printf("%d\n", 1);
+	printf("%d\n", 1);
+	gtk_main();
+	return 0;
+}
+

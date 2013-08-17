@@ -1,0 +1,9 @@
+Main()
+(
+  i = 5,
+  while (i > 0) [
+    puts(i),
+    i = i - 1,
+  ]
+  puts(42),
+)

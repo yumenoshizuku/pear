@@ -1,0 +1,18 @@
+def id,
+Foo(bar) (
+    works = 22 + 8,
+    fun = 69 * 2,
+    return bar + works,
+)
+Main() (
+    tryme = Foo(),
+    puts(tryme.fun),
+    puts(tryme.works),
+    puts(tryme(12)),
+    puts(tryme(8)),
+    tryme.works = 222,
+    puts(tryme.works),
+    tryme.fun = 21,
+    puts(tryme.fun),
+)
+

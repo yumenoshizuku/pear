@@ -1,0 +1,17 @@
+Fib(x)
+(
+  fib = Fib(),
+  if (x < 2) return 1,
+  return fib(x-1) + fib(x-2),
+)
+
+Main()
+(
+  fib = Fib(),
+  puts(fib(0)),
+  puts(fib(1)),
+  puts(fib(2)),
+  puts(fib(3)),
+  puts(fib(4)),
+  puts(fib(5)),
+)

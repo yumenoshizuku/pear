@@ -1,0 +1,35 @@
+def a,
+def b,
+
+Printa()
+(
+  return a,
+)
+
+Printb()
+(
+  return b,
+)
+
+Incab()
+(
+  a = a + 1,
+  b = b + 1,
+  return a + b,
+)
+
+Main()
+(
+  a = 42,
+  b = 21,
+
+  printa = Printa(),
+  printb = Printb(),
+  incab = Incab(),
+
+  puts(printa()),
+  puts(printb()),
+  puts(incab()),
+  puts(printa()),
+  puts(printb()),
+)

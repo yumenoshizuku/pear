@@ -35,8 +35,8 @@ int main(int argc, char** argv)
 	edit = gtk_tool_button_new_from_stock(GTK_STOCK_EDIT);
 	copy = gtk_tool_button_new_from_stock(GTK_STOCK_COPY);
 	cut = gtk_tool_button_new_from_stock(GTK_STOCK_CUT);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(cut), -1);
 	paste = gtk_tool_button_new_from_stock(GTK_STOCK_PASTE);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(cut), -1);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(paste), -1);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(new), -1);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), GTK_TOOL_ITEM(edit), -1);

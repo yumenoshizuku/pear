@@ -287,595 +287,7 @@ let run (vars, objs) =
               let new_obj_decls =(NameMap.add ("$" ^ i) new_odecl loc_obj_decls)
               in
               (Int 1, cenv, new_obj_decls), new_env
-(* The Ast.Set function for GTK is primarily written by Fanxing Meng, with occasional widgets (radio button arrays etc) by Rui Chen *)
-      | (Ast.Set(id, obj, actuals), cenv, loc_obj_decls) -> 
-	let (st, g, f) = cenv in
-              let (plocals, pglobals) = env in 
-  		if not (NameMap.mem id plocals or NameMap.mem id pglobals) then (* Creates new gtk objects *)
- 	(
-	    let args, env = List.fold_left
-	      (fun (actuals, env) actual ->
-                  let (v, cenv, temp_obj_decls), env = eval env (actual, cenv,
-                  loc_obj_decls) in v :: actuals, env)
-   	      ([], env) (List.rev actuals)
-	    in
-		let var = ((NameMap.add id (String obj) plocals), pglobals) in 
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = {  returnType = lfdecl.returnType; 
-				fname = lfdecl.fname; 
-				formals = lfdecl.formals; 
-             			locals= (
-	let print =
-		(match (obj, args) with
-(* Do nothing for callback function declarations here *)
-			  ("Callback", _) -> []
-(* Declares array type widgets *)
-			| ("CheckBoxArray", [Int n]) ->
-        [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Literal n))]
-			| ("ButtonArray", [Int n]) ->
-        [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Literal n))]
-			| ("ToolButton", _) ->
-		[(Cast.VDecl (PointerType (GtkToolItem), id))]
-(* Declares color type widgets *)
-			| ("Color", _) ->
-		[(Cast.VDecl (BasicType (GdkColor), "color"))]
-			| (_, _) ->
-(* Declares basic type widgets *)
-		[(Cast.VDecl (PointerType (GtkWidget), id))])   
-				 in
-                 match lfdecl.locals with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print 
-           ) ; body= (
-               let print = 
-(* Assign to widgets using gtk functions *)
-		(match (obj, args) with
-		  ("Window", []) -> 
-	[Cast.Expr (Assign (id, (Call ("gtk_window_new", [ConstLit ("GTK_WINDOW_TOPLEVEL")])))); 
-	Cast.Expr(Call("g_signal_connect",[Id id; StrLit "destroy" ; Call("G_CALLBACK",[ConstLit ("gtk_main_quit")]); Null]))]
-		| ("Fixed", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_fixed_new", []))))]
-		| ("Frame", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_frame_new", [Null]))))]
-		| ("Grid", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_grid_new", []))))]
-		| ("Vbox", [String "hom"]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
-		| ("Vboxhom", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
-		| ("Vbox", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
-		| ("Box", [String "vertical"]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
-		| ("Box", [String "horizontal"]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
-		| ("Hbox", [String "hom"]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
-		| ("Hboxhom", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
-		| ("Hbox", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
-	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
-        | ("Button", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_button_new", []))))]
-		| ("Button", [String s]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_button_new_with_label", [StrLit s]))))]
-		| ("Label", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [Null]))))]
-		| ("Label", [String s]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [StrLit s]))))]
-		| ("CheckBox", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new", []))))]	
-		| ("CheckBox", [String s]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new_with_label", [StrLit s]))))]	
-		| ("CheckBoxArray", [Int n]) ->
-	[Cast.For(Assign("int i", Literal 1), Binop(Id "i",Leq,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Cast.Block[Expr(Assign(id ^ "[i-1]", Call("gtk_check_button_new", [])))])]
-		| ("ButtonArray", [Int n]) ->
-	[Cast.For(Assign("int i", Literal 1), Binop(Id "i",Leq,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Cast.Block[Expr(Assign(id ^ "[i-1]", Call("gtk_button_new", [])))])]
-(* Different types of tool buttons are built into pear *)
-		| ("ToolButton", [String s]) ->
-		(match s with
-		  	  "about" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_ABOUT")])))]
-		    | "add" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_ADD")])))]
-		    | "apply" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_APPLY")])))]
-		    | "cancel" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CANCEL")])))]
-		    | "cdrom" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CDROM")])))]
-		    | "clear" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CLEAR")])))]
-		    | "close" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CLOSE")])))]
-		    | "copy" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_COPY")])))]
-		    | "cut" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CUT")])))]
-		    | "paste" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PASTE")])))]
-		    | "delete" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DELETE")])))]
-		    | "error" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIALOG_ERROR")])))]
-		    | "info" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_INFO")])))]
-		    | "question" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIALOG_QUESTION")])))]
-		    | "warning" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIALOG_WARNING")])))]
-		    | "folder" -> [Cast.Expr (Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIRECTORY")]))]
-		    | "edit" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_EDIT")])))]
-		    | "execute" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_EXECUTE")])))]
-		    | "file" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_FILE")])))]
-		    | "find" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_FIND")])))]
-		    | "fullscreen" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_FULLSCREEN")])))]
-		    | "back" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_GO_BACK")])))]
-		    | "forward" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_GO_FORWARD")])))]
-		    | "home" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_HOME")])))]
-			| "network" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_NETWORK")])))]
-		    | "new" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_NEW")])))]
-		    | "open" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_OPEN")])))]
-		    | "preference" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PREFERENCES")])))]
-		    | "print" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PRINT")])))]
-		    | "properties" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PROPERTIES")])))]
-		    | "quit" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_QUIT")])))]
-		    | "refresh" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_REFRESH")])))]
-		    | "save" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_SAVE")])))]
-		    | "stop" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_STOP")])))]
-		    | "undo" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_UNDO")])))]
-		    | "redo" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_REDO")])))]
-			| "separator" -> [Cast.Expr (Assign (id, Call("gtk_separator_tool_item_new",[])))]
-			| _ -> raise (Failure ("Error: Tool Button " ^ s ^ " is invalid.")))
-		| ("Menubar", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_bar_new", []))))]
-		| ("Menu", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_new", []))))]
-		| ("Menuitem", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new", []))))]
-		| ("Menuitem", [String s]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new_with_label", [StrLit s]))))]
-    	| ("TextEntry", []) ->
-    [Cast.Expr (Assign (id, (Call ("gtk_entry_new", []))))]   
-		| ("RadioButton", []) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_radio_button_new", [Null]))))] 
- 		| ("ComboBox", []) ->
-    [Cast.Expr (Assign (id, (Call ("gtk_combo_box_new", []))))]
-		| ("Toolbar", []) ->
-	 [Cast.Expr (Assign (id, (Call ("gtk_toolbar_new", []))))]
-		| ("Statusbar", []) -> 
-	 [Cast.Expr (Assign (id, (Call ("gtk_statusbar_new", []))))]
-		| ("Image", [String s]) ->
-	 [Cast.Expr (Assign (id, (Call ("gtk_image_new_from_file", [StrLit s]))))]
-		| ("Align", [Float x; Float y; Float h; Float w]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_alignment_new", [FloLit x; FloLit y; FloLit h; FloLit w]))))]
-		| ("Align", [Int x; Int y; Int h; Int w]) ->
-	[Cast.Expr (Assign (id, (Call ("gtk_alignment_new", [Literal x; Literal y; Literal h; Literal w]))))]
-(* Do nothing to callback function declarations *)
-		| ("Callback", _) -> []
-		| _  -> raise (Failure ("Error: Object not supported."))) in
-(* Prepend object initialization to the main function *)
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print 
-           )} in
-(* Updates the main function *)
-         let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> [nfdecl]
-             | x   -> List.rev([nfdecl]@(List.tl (List.rev x)))) in 
-              (String(obj), (st, g, ncenv), loc_obj_decls), var
-)
-(* If widget id already exist, go to property settings *)
-else (
-(* The following three built-in callback function examples show how to deal with string manipulations (in an ugly way), which pear currently don't support. Later on there are elegant solutions to callback functions where all commands are accessible within pear/gtk *)
-match (obj, actuals) with
-          ("ClickIncrement",[Ast.Call (fid, [Ast.Id wid])]) -> (
-if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
-then (
-(* Widget to be changed exists, wid is label *)
-let addfdecl = {
-		returnType = BasicType(Cast.Void);
-        fname = fid;
-        formals = [FormalDecl (PointerType (GtkWidget), "widget");
-   		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [Cast.OneDArrDecl(BasicType(Cast.Char), "str", Literal 10)];
-        body = (
-		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
-		  String("Label") ->
-	[Cast.Expr(Call("sprintf", [Id "str"; StrLit "%d"; Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])])]) , Add, Literal 1) ])); Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Id "str"]	))]
-		
-		| _ -> raise (Failure ("Error: Callback function not supported."))
-		);}				
- in
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = { returnType = lfdecl.returnType; 
-			fname = lfdecl.fname; formals = lfdecl.formals; 
-             locals= lfdecl.locals; body= (
-				let print =
-	[Cast.Expr (Call("g_signal_connect",
-	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
- in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print
-           )}
-in let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> [addfdecl] @ [nfdecl]
-             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
-	in (String(obj), (st, g, ncenv), loc_obj_decls), env)
-else raise (Failure ("Error: Unknown widget " ^ wid))
-)
-(* Click decrement the number on label by 1 *)
-			| ("ClickDecrement",[Ast.Call (fid, [Ast.Id wid])]) -> (
-if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
-then (
-(* Widget to be changed exists, wid is label *)
-let addfdecl = {
-		returnType = BasicType(Cast.Void);
-        fname = fid;
-        formals = [FormalDecl (PointerType (GtkWidget), "widget");
-   		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [Cast.OneDArrDecl(BasicType(Cast.Char), "str", Literal 10)];
-        body = (
-		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
-		  String("Label") ->
-[Cast.Expr(Call("sprintf", [Id "str"; StrLit "%d"; Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])])]) ,Sub, Literal 1) ])); Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Id "str"]	))]
-		
-		| _ -> raise (Failure ("Error: Callback function not supported."))
-		);}				
- in
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = { returnType = lfdecl.returnType; 
-			fname = lfdecl.fname; formals = lfdecl.formals; 
-             locals= lfdecl.locals; body= (
-				let print =
-	[Cast.Expr (Call("g_signal_connect",
-	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
- in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print
-           )}
-in let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> [addfdecl] @ [nfdecl]
-             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
-	in (String(obj), (st, g, ncenv), loc_obj_decls), env)
-else raise (Failure ("Error: Unknown widget " ^ wid))
-)
-			| ("Calcbutton",[Ast.Literal n; Ast.Call (fid, [Ast.Id wid])]) -> (
-if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
-then (
-(* Widget to be changed exists, wid is label *)
-let addfdecl = {
-		returnType = BasicType(Cast.Void);
-        fname = fid;
-        formals = [FormalDecl (PointerType (GtkWidget), "widget");
-   		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [Cast.OneDArrDecl(PointerType(Cast.GChar), "result", Literal 1)];
-        body = (
-		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
-		  String("Label") ->
-	[Cast.If (
-Cast.Call("g_str_has_prefix", [Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); StrLit "="]), 
-
-Expr(Call("__returnValue__", [Id wid])), 
-
-Cast.If(Call("g_file_get_contents", [StrLit "out.txt"; Id "result"; Null; Null]), 
-
-Cast.Block[Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL", [Id wid]) ; Null]));
-Cast.Expr(Call("g_remove", [StrLit "out.txt"]));
-Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL", [Id wid]); Call("g_strconcat", [Call("gtk_label_get_text", [Call("GTK_LABEL",[Id wid])]); Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); Null])]))],
-Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL",[Id wid]);Call("g_strconcat", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])]) ; Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); Null])]))
-)
-)]
-		| _ -> raise (Failure ("Error: Callback function not supported."))
-		);}				
- in
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = { returnType = lfdecl.returnType; 
-			fname = lfdecl.fname; formals = lfdecl.formals; 
-             locals= lfdecl.locals; body= (
-				let print =
-	[Cast.For(Assign("int i", Literal 0), Binop(Id "i",Less,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Expr(Call("g_signal_connect",
-	[Call("G_OBJECT",[OneDArrSubs(Id id, Id "i")]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid])))]
- in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print
-           )}
-in let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> [addfdecl] @ [nfdecl]
-             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
-	in (String(obj), (st, g, ncenv), loc_obj_decls), env)
-else raise (Failure ("Error: Unknown widget " ^ wid))
-)
-
-| _ -> (
-(* To deal with different types of callback functions that could have other "Set" nested in, the type of action os specified and a new function is created and prepended to the c program. *)
-	match (obj, actuals) with
-		      ("Clicked", [Ast.Id fid; Ast.Id wid; _]) -> (
-
- let addfdecl = [{
-		returnType = BasicType(Cast.Void);
-        fname = fid;
-        formals = [FormalDecl (PointerType (GtkWidget), "widget");
-   		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [];
-        body = [];}]				
- in
- let (v, (addsdecl, addgdecl, addfdecl), temp_obj_decls), env = List.fold_left
-	      (fun ((actuals, (addsdecl, addgdecl, addfdecl), loc_obj_decls), env) actual ->
-                  let (v, (_, _, addfdecl), temp_obj_decls), env = eval env (actual, ([], [], addfdecl), loc_obj_decls) in (v :: actuals, (addsdecl, addgdecl, addfdecl), loc_obj_decls), env)
-   	      (([], ([], [], addfdecl), loc_obj_decls), env) (List.rev actuals)
- in
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = { returnType = lfdecl.returnType; 
-			fname = lfdecl.fname; formals = lfdecl.formals; 
-             locals= lfdecl.locals; body= (
-				let print =
-	[Cast.Expr (Call("g_signal_connect",
-	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
- in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print
-           )}
-in let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> addfdecl @ [nfdecl]
-             | x   -> addfdecl @ (List.tl  x))
-	in (String(obj), (st, g, ncenv), loc_obj_decls), env
-)
-			| ("Enter", [Ast.Id fid; Ast.Id wid; _]) -> (
-
- let addfdecl = [{
-		returnType = BasicType(Cast.Void);
-        fname = fid;
-        formals = [FormalDecl (PointerType (GtkWidget), "widget");
-   		   FormalDecl (BasicType (GPointer), wid)];
-        locals = [];
-        body = [];}]				
- in
- let (v, (addsdecl, addgdecl, addfdecl), temp_obj_decls), env = List.fold_left
-	      (fun ((actuals, (addsdecl, addgdecl, addfdecl), loc_obj_decls), env) actual ->
-                  let (v, (_, _, addfdecl), temp_obj_decls), env = eval env (actual, ([], [], addfdecl), loc_obj_decls) in (v :: actuals, (addsdecl, addgdecl, addfdecl), loc_obj_decls), env)
-   	      (([], ([], [], addfdecl), loc_obj_decls), env) (List.rev actuals)
- in
-		let lfdecl = List.hd (List.rev f) in
-		let nfdecl = { returnType = lfdecl.returnType; 
-			fname = lfdecl.fname; formals = lfdecl.formals; 
-             locals= lfdecl.locals; body= (
-				let print =
-	[Cast.Expr (Call("g_signal_connect",
-	[Call("G_OBJECT",[Id id]); StrLit "enter"; Call("G_CALLBACK",[Id fid]); Id wid]))]
- in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print
-           )}
-in let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> addfdecl @ [nfdecl]
-             | x   -> addfdecl @ (List.tl  x))
-	in (String(obj), (st, g, ncenv), loc_obj_decls), env
-)
-(* All other basic property setting functions *)
- 			| _ -> (
-
-         let lfdecl = List.hd (List.rev f) in
-		 let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
-             locals= 
-(
-	let print =
-		(match (obj, actuals) with
-		 ("Color", _) ->
-		[(Cast.VDecl (BasicType (GdkColor), "color"))]
-			| (_, _) -> []  )
-				 in
-                 match lfdecl.locals with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print 
-           )
-; body= (
-               let print = 
-		match ((if NameMap.mem id plocals then NameMap.find id plocals else NameMap.find id pglobals), obj, actuals) with
-(* If a widget is passed in as an argument, the argument should not be evaluated (because otherwise it would return the type of the widget, which has no use). *)
-		  (String("Toolbar"), "Insert", [Ast.Id wid]) ->
-	[(Cast.Expr (Call("gtk_toolbar_insert",
-	[Call("GTK_TOOLBAR",[Cast.Id id]); Call("GTK_TOOL_ITEM",[Cast.Id wid]); Literal (-1)])))]
-		| (String("Grid"), "AttachAt", [Ast.Id wid; Ast.Literal x; Ast.Literal y; Ast.Literal c; Ast.Literal r]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_grid_attach",
-	[Call("GTK_GRID",[Id id]); Id wid; Literal x; Literal y; Literal c; Literal r]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (String("ButtonArray"), "AttachTo", [Ast.Literal i; Ast.Id wid; Ast.Literal x; Ast.Literal y; Ast.Literal c; Ast.Literal r]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_grid_attach",
-	[Call("GTK_GRID",[Id wid]); OneDArrSubs(Id id, Literal i); Literal x; Literal y; Literal c; Literal r]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (_, "Contain", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_container_add",
-	[Call("GTK_CONTAINER",[Id id]); Id wid]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (_, "FixPos", [Ast.Id wid; Ast.Literal x; Ast.Literal y]) ->
-		if (NameMap.find wid plocals = String("Fixed")) 
-		or (NameMap.find wid pglobals = String("Fixed")) then
-		[Cast.Expr (Call("gtk_fixed_put",
-	[Call("GTK_FIXED",[Id wid]); Id id; Literal x; Literal y]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a Fixed widget."))
-		| (_, "BoxPack", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_box_pack_start",
-	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("FALSE"); ConstLit("FALSE"); Literal 5]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (_, "BoxPackFill", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_box_pack_start",
-	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("FALSE"); ConstLit("TRUE"); Literal 5]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (_, "BoxPackExpand", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_box_pack_start",
-	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("TRUE"); ConstLit("FALSE"); Literal 5]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (_, "BoxPackFillExpand", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_box_pack_start",
-	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("TRUE"); ConstLit("TRUE"); Literal 5]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-
-		| (_, "InMenu", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_menu_item_set_submenu",
-	[Call("GTK_MENU_ITEM",[Id id]); Id wid]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| (_, "AppendToMenu", [Ast.Id wid]) ->
-		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
-	[Cast.Expr (Call("gtk_menu_shell_append",
-	[Call("GTK_MENU_SHELL",[Id wid]); Id id]))]
-		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
-		| _ -> (
-
-	    let args, env = List.fold_left
-	      (fun (actuals, env) actual ->
-                  let (v, cenv, temp_obj_decls), env = eval env (actual, cenv,
-                  loc_obj_decls) in v :: actuals, env)
-   	      ([], env) (List.rev actuals)
-	    in
-	match ((if NameMap.mem id plocals then NameMap.find id plocals else NameMap.find id pglobals), obj, args) with
-(* If there are no widgets passed in as argument, the args would be evaluated so that variables can be passed in as arguments. *)
-		  (String("Window"), "Title", [String s]) ->
-	[Cast.Expr (Call("gtk_window_set_title",
-	[Call("GTK_WINDOW",[Id id]); StrLit s]))]
-		| (String("Window"), "Position", [String "center"]) ->
-	[Cast.Expr (Call("gtk_window_set_position",
-	[Call("GTK_WINDOW",[Id id]); ConstLit("GTK_WIN_POS_CENTER")]))]
-		| (String("Window"), "Move", [Int x; Int y]) ->
-	[Cast.Expr (Call("gtk_window_move",
-	[Call("GTK_WINDOW",[Id id]); Literal x; Literal y]))]
-		| (String("Window"), "Size", [Int w; Int h]) ->
-	[Cast.Expr (Call("gtk_window_set_default_size",
-	[Call("GTK_WINDOW",[Id id]); Literal w; Literal h]))]
-		| (_, "Size", [Int w; Int h]) ->
-	[Cast.Expr (Call("gtk_widget_set_size_request",
-	[Id id; Literal w; Literal h]))]
-		| (String("Window"), "Resizable", [String "no"]) ->
-	[Cast.Expr (Call("gtk_window_set_resizable",
-	[Call("GTK_WINDOW",[Id id]); ConstLit("TRUE")]))]
-		| (String("Frame"), "Label", [String s]) ->
-	[(Cast.Expr (Call("gtk_frame_set_label",
-	[Call("GTK_FRAME",[Cast.Id id]); StrLit s])))]
-		| (String("Toolbar"), "Style", [String "icon"]) ->
-	[(Cast.Expr (Call("gtk_toolbar_set_style",
-	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_ICONS")])))]
-		| (String("Toolbar"), "Style", [String "text"]) ->
-	[(Cast.Expr (Call("gtk_toolbar_set_style",
-	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_TEXT")])))]
-		| (String("Toolbar"), "Style", [String "both"]) ->
-	[(Cast.Expr (Call("gtk_toolbar_set_style",
-	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_BOTH")])))]
-		| (String("Statusbar"), "Show", [String s]) ->
-	[(Cast.Expr (Call("gtk_statusbar_push",
-	[Call("GTK_STATUSBAR",[Cast.Id id]); Call("gtk_statusbar_get_context_id",[Call("GTK_STATUSBAR",[Cast.Id id]); StrLit ""]); StrLit s])))]
-		| (String("Button"), "Label", [String s]) ->
-	[(Cast.Expr (Call("gtk_button_set_label",
-	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
-		| (String("ButtonArray"), "Label", [Int i; String s]) ->
-	[(Cast.Expr (Call("gtk_button_set_label",
-	[Call("GTK_BUTTON",[Cast.OneDArrSubs(Id id, Literal i)]); StrLit s])))]
-		| (String("Label"), "Text", [String s]) ->
-	[(Cast.Expr (Call("gtk_label_set_text",
-	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]
-		| (String("Label"), "GetText", []) ->
-	[(Cast.Expr (Call("gtk_label_get_text",
-	[Call("GTK_LABEL",[Cast.Id id])])))]
-		| (String("Frame"), "Shadow", [String s]) ->
-		(match s with
-		  	"in" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
-		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_IN")]))]
-			| "out" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
-		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_OUT")]))]
-			| "etched in" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
-		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_ETCHED_IN")]))]
-			| "etched out" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
-		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_ETCHED_OUT")]))]
-			| _ -> raise (Failure ("Error: Shadow " ^ s ^ " is invalid.")))		
-		| (String("Grid"), "InsertRowAt", [Int r]) ->
-	[Cast.Expr (Call("gtk_grid_insert_row",
-	[Call("GTK_GRID",[Id id]); Literal r]))]
-		| (String("Grid"), "InsertColumnAt", [Int c]) ->
-	[Cast.Expr (Call("gtk_grid_insert_column",
-	[Call("GTK_GRID",[Id id]); Literal c]))]
-		| (String("Grid"), "Hom", [String "row"]) ->
-	[Cast.Expr (Call("gtk_grid_set_row_homogeneous",
-	[Call("GTK_GRID",[Id id]); ConstLit("TRUE")]))]
-		| (String("Grid"), "Hom", [String "column"]) ->
-	[Cast.Expr (Call("gtk_grid_set_column_homogeneous",
-	[Call("GTK_GRID",[Id id]); ConstLit("TRUE")]))]
-		| (_, "ClickQuit", _) ->
-	[Cast.Expr (Call("g_signal_connect",
-	[Call("G_OBJECT",[Id id]); StrLit "activate"; Call("G_CALLBACK",[ConstLit("gtk_main_quit")]); Null]))]
-		| (_, "BorderWidth", [Int w]) ->
-	[Cast.Expr (Call("gtk_container_set_border_width",
-	[Call("GTK_CONTAINER",[Id id]); Literal w]))]
-		| (String("Menuitem"), "Label", [String s]) ->
-	[(Cast.Expr (Call("gtk_menu_item_set_label",
-	[Call("GTK_MENU_ITEM",[Id id]); StrLit s])))]
-		| (_, "Color", [Int rd; Int gr; Int bl]) ->
-	[Cast.Expr(Assign("color.red", Literal rd));
-	Expr(Assign("color.green", Literal gr));
-	Expr(Assign("color.blue", Literal bl));
-	Expr(Call("gtk_widget_modify_bg", [Id id; ConstLit "GTK_STATE_PRELIGHT"; ConstLit "&color"]))]
-		| (_, "Show", _) ->
-	[Cast.Expr (Call("gtk_widget_show",[Id id]))]
-		| (_, "Showall", _) ->
-	[Cast.Expr (Call("gtk_widget_show_all",[Id id]))]
-		| (String("CheckBox"), "Label", [String s]) ->
-	[(Cast.Expr (Call("gtk_button_set_label",
-	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]		
-		| (String("RadioButton"), "Label", [String s]) ->
-	[(Cast.Expr (Call("gtk_button_set_label",
-	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
-		| (String("TextEntry"), "Text", [String s]) ->
-	[(Cast.Expr (Call("gtk_entry_set_text ",
-	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]	
-		| (String("ComboBox"), "Append", [String s]) ->
-	[(Cast.Expr (Call("gtk_combo_box_append_text ",
-	[Call("GTK_COMBO",[Cast.Id id]); StrLit s])))]	
-		| (String ("CheckBox"), "Active", [String "yes"]) ->		
-	[Cast.Expr (Call("gtk_toggle_button_set_active",
-	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("TRUE")]))]
-		| (String ("CheckBox"), "Active", [String "no"]) ->		
-	[Cast.Expr (Call("gtk_toggle_button_set_active",
-	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("FALSE")]))]	
-
-		| (_, _, _) -> raise (Failure ("Error: Variable " ^ id ^ "or object " ^ obj ^" is invalid or cannot be changed.")))
-		 
-
-		in
-                 match lfdecl.body with
-                   []  ->     print
-                 | [x] ->  x::print
-                 | x   -> x @ print
-           )} in
-         let ncenv = 
-           ( match f with
-               []  ->     []
-             | [x] -> [nfdecl]
-             | x   -> List.rev([nfdecl]@(List.tl (List.rev x))))
-	in (String(obj), (st, g, ncenv), loc_obj_decls),env)))                  
+                  
 
       | (Ast.Call("puts", [e]), cenv, loc_obj_decls) ->
 	  let (v, (cstrs, cvars, cfuncs), loc_obj_decls), env = eval env (e, cenv, loc_obj_decls) in
@@ -1007,6 +419,549 @@ in let ncenv =
               let (locals, globals) = env in 
               let var = ((NameMap.add v (Int 0) locals), globals) in 
               (var, cenv, loc_obj_decls)
+      | Ast.Set(id, obj, args) -> 
+	let (st, g, f) = cenv in
+              let (plocals, pglobals) = env in 
+  		if not (NameMap.mem id plocals or NameMap.mem id pglobals) then
+(* Creates new gtk objects *)
+ 	(
+		let var = ((NameMap.add id (String obj) plocals), pglobals) in 
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = {  returnType = lfdecl.returnType; 
+				fname = lfdecl.fname; 
+				formals = lfdecl.formals; 
+             			locals= (
+	let print =
+		(match (obj, args) with
+(* Declares array type widgets *)
+			  ("CheckBoxArray", [Ast.Literal n]) ->
+        [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Literal n))]
+			| ("ButtonArray", [Ast.Literal n]) ->
+        [(Cast.OneDArrDecl (PointerType (GtkWidget), id, Literal n))]
+			| ("ToolButton", _) ->
+		[(Cast.VDecl (PointerType (GtkToolItem), id))]
+			| (_, _) ->
+(* Declares basic type widgets *)
+		[(Cast.VDecl (PointerType (GtkWidget), id))])   
+				 in
+                 match lfdecl.locals with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print 
+           ) ; body= (
+               let print = 
+(* Assign to widgets using gtk functions *)
+		(match (obj, args) with
+		  ("Window", []) -> 
+	[Cast.Expr (Assign (id, (Call ("gtk_window_new", [ConstLit ("GTK_WINDOW_TOPLEVEL")])))); 
+	Cast.Expr(Call("g_signal_connect",[Id id; StrLit "destroy" ; Call("G_CALLBACK",[ConstLit ("gtk_main_quit")]); Null]))]
+		| ("Fixed", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_fixed_new", []))))]
+		| ("Frame", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_frame_new", [Null]))))]
+		| ("Grid", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_grid_new", []))))]
+		| ("Vbox", [Ast.Id "hom"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Vboxhom", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Vbox", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+		| ("Box", [Ast.Id "vertical"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_VERTICAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+		| ("Box", [Ast.Id "horizontal"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+		| ("Hbox", [Ast.Id "hom"]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Hboxhom", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("TRUE")]))]
+		| ("Hbox", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_box_new", [ConstLit("GTK_ORIENTATION_HORIZONTAL"); Literal 5]))));
+	 Cast.Expr (Call("gtk_box_set_homogeneous",[Call("GTK_BOX",[Id id]);ConstLit("FALSE")]))]
+        | ("Button", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_button_new", []))))]
+		| ("Button", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_button_new_with_label", [StrLit s]))))]
+		| ("Label", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [Null]))))]
+		| ("Label", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_label_new ", [StrLit s]))))]
+		| ("CheckBox", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new", []))))]	
+		| ("CheckBox", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_check_button_new_with_label", [StrLit s]))))]	
+		| ("CheckBoxArray", [Ast.Literal n]) ->
+	[Cast.For(Assign("int i", Literal 1), Binop(Id "i",Leq,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Cast.Block[Expr(Assign(id ^ "[i-1]", Call("gtk_check_button_new", [])))])]
+		| ("ButtonArray", [Ast.Literal n]) ->
+	[Cast.For(Assign("int i", Literal 1), Binop(Id "i",Leq,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Cast.Block[Expr(Assign(id ^ "[i-1]", Call("gtk_button_new", [])))])]
+		| ("ToolButton", [Ast.Id s]) ->
+		(match s with
+		  	  "about" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_ABOUT")])))]
+		    | "add" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_ADD")])))]
+		    | "apply" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_APPLY")])))]
+		    | "cancel" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CANCEL")])))]
+		    | "cdrom" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CDROM")])))]
+		    | "clear" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CLEAR")])))]
+		    | "close" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CLOSE")])))]
+		    | "copy" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_COPY")])))]
+		    | "cut" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_CUT")])))]
+		    | "paste" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PASTE")])))]
+		    | "delete" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DELETE")])))]
+		    | "error" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIALOG_ERROR")])))]
+		    | "info" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_INFO")])))]
+		    | "question" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIALOG_QUESTION")])))]
+		    | "warning" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIALOG_WARNING")])))]
+		    | "folder" -> [Cast.Expr (Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_DIRECTORY")]))]
+		    | "edit" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_EDIT")])))]
+		    | "execute" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_EXECUTE")])))]
+		    | "file" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_FILE")])))]
+		    | "find" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_FIND")])))]
+		    | "fullscreen" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_FULLSCREEN")])))]
+		    | "back" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_GO_BACK")])))]
+		    | "forward" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_GO_FORWARD")])))]
+		    | "home" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_HOME")])))]
+			| "network" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_NETWORK")])))]
+		    | "new" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_NEW")])))]
+		    | "open" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_OPEN")])))]
+		    | "preference" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PREFERENCES")])))]
+		    | "print" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PRINT")])))]
+		    | "properties" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_PROPERTIES")])))]
+		    | "quit" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_QUIT")])))]
+		    | "refresh" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_REFRESH")])))]
+		    | "save" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_SAVE")])))]
+		    | "stop" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_STOP")])))]
+		    | "undo" -> [Cast.Expr (Assign (id, Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_UNDO")])))]
+		    | "redo" -> [Cast.Expr (Assign (id,Call("gtk_tool_button_new_from_stock",[ConstLit ("GTK_STOCK_REDO")])))]
+			| "separator" -> [Cast.Expr (Assign (id, Call("gtk_separator_tool_item_new",[])))]
+			| _ -> raise (Failure ("Error: Tool Button " ^ s ^ " is invalid.")))
+		| ("Menubar", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_bar_new", []))))]
+		| ("Menu", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_new", []))))]
+		| ("Menuitem", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new", []))))]
+		| ("Menuitem", [Ast.StrLit s]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_menu_item_new_with_label", [StrLit s]))))]
+    	| ("TextEntry", []) ->
+    [Cast.Expr (Assign (id, (Call ("gtk_entry_new", []))))]   
+		| ("RadioButton", []) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_radio_button_new", [Null]))))] 
+ 		| ("ComboBox", []) ->
+    [Cast.Expr (Assign (id, (Call ("gtk_combo_box_new", []))))]
+		| ("Toolbar", []) ->
+	 [Cast.Expr (Assign (id, (Call ("gtk_toolbar_new", []))))]
+		| ("Statusbar", []) -> 
+	 [Cast.Expr (Assign (id, (Call ("gtk_statusbar_new", []))))]
+		| ("Image", [Ast.StrLit s]) ->
+	 [Cast.Expr (Assign (id, (Call ("gtk_image_new_from_file", [StrLit s]))))]
+		| ("Align", [Ast.FloLit x; Ast.FloLit y; Ast.FloLit h; Ast.FloLit w]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_alignment_new", [FloLit x; FloLit y; FloLit h; FloLit w]))))]
+		| ("Align", [Ast.Literal x; Ast.Literal y; Ast.Literal h; Ast.Literal w]) ->
+	[Cast.Expr (Assign (id, (Call ("gtk_alignment_new", [Literal x; Literal y; Literal h; Literal w]))))]
+		| _  -> raise (Failure ("Error: Object not supported."))) in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print 
+           )} in
+         let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [nfdecl]
+             | x   -> List.rev([nfdecl]@(List.tl (List.rev x)))) in 
+              (var, (st, g, ncenv), loc_obj_decls)
+)
+(* If id already exist, go to property settings *)
+  		else(
+(* Callback support *)
+			match (obj, args) with
+	("ClickDisplay", [Ast.Call (fid, [Ast.Id wid; Ast.StrLit s])])	-> 
+(if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
+then (
+(* Widget to be changed exists *)
+let addfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = fid;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), wid)];
+        locals = [];
+        body = (
+		match ((if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals), Ast.StrLit(s)) with
+		  (String("Label"), Ast.StrLit(s)) ->
+	[(Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); StrLit s])))]
+		
+		| _ -> raise (Failure ("Error: Callback function not supported."))
+		);}				
+ in
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = { returnType = lfdecl.returnType; 
+			fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+				let print =
+	[Cast.Expr (Call("g_signal_connect",
+	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
+ in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )}
+in let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [addfdecl] @ [nfdecl]
+             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls))
+else raise (Failure ("Error: Unknown widget " ^ wid))
+)
+(* Color change on mouse enter *)
+			| ("EnterColor", [Ast.Call (fid, [Ast.Literal rd; Ast.Literal gr; Ast.Literal bl])]) -> 
+(
+let addfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = fid;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), "data")];
+        locals = [Cast.VDecl(BasicType(GdkColor), "color")];
+        body = (
+	[Cast.Expr(Assign("color.red", Literal rd));
+	Expr(Assign("color.green", Literal gr));
+	Expr(Assign("color.blue", Literal bl));
+	Expr(Call("gtk_widget_modify_bg", [Id "widget"; ConstLit "GTK_STATE_PRELIGHT"; ConstLit "&color"]))]
+);}				
+ in
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = { returnType = lfdecl.returnType; 
+			fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+				let print =
+	[Cast.Expr (Call("g_signal_connect",
+	[Call("G_OBJECT",[Id id]); StrLit "enter"; Call("G_CALLBACK",[Id fid]); Null]))]
+ in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )}
+in let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [addfdecl] @ [nfdecl]
+             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls)
+)
+(* Click increaments the number on label by 1 *)
+			| ("ClickIncrement",[Ast.Call (fid, [Ast.Id wid])]) -> (
+if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
+then (
+(* Widget to be changed exists, wid is label *)
+let addfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = fid;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), wid)];
+        locals = [Cast.OneDArrDecl(BasicType(Cast.Char), "str", Literal 10)];
+        body = (
+		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
+		  String("Label") ->
+	[Cast.Expr(Call("sprintf", [Id "str"; StrLit "%d"; Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])])]) , Add, Literal 1) ])); Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Id "str"]	))]
+		
+		| _ -> raise (Failure ("Error: Callback function not supported."))
+		);}				
+ in
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = { returnType = lfdecl.returnType; 
+			fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+				let print =
+	[Cast.Expr (Call("g_signal_connect",
+	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
+ in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )}
+in let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [addfdecl] @ [nfdecl]
+             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls))
+else raise (Failure ("Error: Unknown widget " ^ wid))
+)
+(* Click decrement the number on label by 1 *)
+			| ("ClickDecrement",[Ast.Call (fid, [Ast.Id wid])]) -> (
+if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
+then (
+(* Widget to be changed exists, wid is label *)
+let addfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = fid;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), wid)];
+        locals = [Cast.OneDArrDecl(BasicType(Cast.Char), "str", Literal 10)];
+        body = (
+		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
+		  String("Label") ->
+[Cast.Expr(Call("sprintf", [Id "str"; StrLit "%d"; Binop(Call("atoi", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])])]) ,Sub, Literal 1) ])); Cast.Expr (Call("gtk_label_set_text ", [Call("GTK_LABEL",[Id wid]); Id "str"]	))]
+		
+		| _ -> raise (Failure ("Error: Callback function not supported."))
+		);}				
+ in
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = { returnType = lfdecl.returnType; 
+			fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+				let print =
+	[Cast.Expr (Call("g_signal_connect",
+	[Call("G_OBJECT",[Id id]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid]))]
+ in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )}
+in let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [addfdecl] @ [nfdecl]
+             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls))
+else raise (Failure ("Error: Unknown widget " ^ wid))
+)
+			| ("Calcbutton",[Ast.Literal n; Ast.Call (fid, [Ast.Id wid])]) -> (
+if ((NameMap.mem wid plocals) or (NameMap.mem wid pglobals)) 
+then (
+(* Widget to be changed exists, wid is label *)
+let addfdecl = {
+		returnType = BasicType(Cast.Void);
+        fname = fid;
+        formals = [FormalDecl (PointerType (GtkWidget), "widget");
+   		   FormalDecl (BasicType (GPointer), wid)];
+        locals = [Cast.OneDArrDecl(PointerType(Cast.GChar), "result", Literal 1)];
+        body = (
+		match (if NameMap.mem wid plocals then NameMap.find wid plocals else NameMap.find wid pglobals) with
+		  String("Label") ->
+	[Cast.If (
+Cast.Call("g_str_has_prefix", [Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); StrLit "="]), 
+
+Expr(Call("__returnValue__", [Id wid])), 
+
+Cast.If(Call("g_file_get_contents", [StrLit "out.txt"; Id "result"; Null; Null]), 
+
+Cast.Block[Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL", [Id wid]) ; Null]));
+Cast.Expr(Call("g_remove", [StrLit "out.txt"]));
+Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL", [Id wid]); Call("g_strconcat", [Call("gtk_label_get_text", [Call("GTK_LABEL",[Id wid])]); Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); Null])]))],
+Cast.Expr(Call("gtk_label_set_text", [Call("GTK_LABEL",[Id wid]);Call("g_strconcat", [Call("gtk_label_get_text", [Call("GTK_LABEL", [Id wid])]) ; Call("gtk_button_get_label", [Call("GTK_BUTTON", [Id "widget"])]); Null])]))
+)
+)]
+		| _ -> raise (Failure ("Error: Callback function not supported."))
+		);}				
+ in
+		let lfdecl = List.hd (List.rev f) in
+		let nfdecl = { returnType = lfdecl.returnType; 
+			fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+				let print =
+	[Cast.For(Assign("int i", Literal 0), Binop(Id "i",Less,Literal n), Assign("i", Binop(Id "i",Add,Literal 1)), Expr(Call("g_signal_connect",
+	[Call("G_OBJECT",[OneDArrSubs(Id id, Id "i")]); StrLit "clicked"; Call("G_CALLBACK",[Id fid]); Id wid])))]
+ in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )}
+in let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [addfdecl] @ [nfdecl]
+             | x   -> [addfdecl] @ List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls))
+else raise (Failure ("Error: Unknown widget " ^ wid))
+)
+(* Set properties *)
+ 			| _ -> (
+
+         let lfdecl = List.hd (List.rev f) in
+		 let nfdecl = { returnType = lfdecl.returnType; fname = lfdecl.fname; formals = lfdecl.formals; 
+             locals= lfdecl.locals; body= (
+               let print = 
+		match ((if NameMap.mem id plocals then NameMap.find id plocals else NameMap.find id pglobals), obj, args) with
+		  (String("Window"), "Title", [Ast.StrLit s]) ->
+	[Cast.Expr (Call("gtk_window_set_title",
+	[Call("GTK_WINDOW",[Id id]); StrLit s]))]
+		| (String("Window"), "Position", [Ast.Id "center"]) ->
+	[Cast.Expr (Call("gtk_window_set_position",
+	[Call("GTK_WINDOW",[Id id]); ConstLit("GTK_WIN_POS_CENTER")]))]
+		| (String("Window"), "Move", [Ast.Literal x; Ast.Literal y]) ->
+	[Cast.Expr (Call("gtk_window_move",
+	[Call("GTK_WINDOW",[Id id]); Literal x; Literal y]))]
+		| (String("Window"), "Size", [Ast.Literal w; Ast.Literal h]) ->
+	[Cast.Expr (Call("gtk_window_set_default_size",
+	[Call("GTK_WINDOW",[Id id]); Literal w; Literal h]))]
+		| (_, "Size", [Ast.Literal w; Ast.Literal h]) ->
+	[Cast.Expr (Call("gtk_widget_set_size_request",
+	[Id id; Literal w; Literal h]))]
+		| (String("Window"), "Resizable", [Ast.Id("no")]) ->
+	[Cast.Expr (Call("gtk_window_set_resizable",
+	[Call("GTK_WINDOW",[Id id]); ConstLit("TRUE")]))]
+		| (String("Frame"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_frame_set_label",
+	[Call("GTK_FRAME",[Cast.Id id]); StrLit s])))]
+		| (String("Toolbar"), "Style", [Ast.Id("icon")]) ->
+	[(Cast.Expr (Call("gtk_toolbar_set_style",
+	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_ICONS")])))]
+		| (String("Toolbar"), "Style", [Ast.Id("text")]) ->
+	[(Cast.Expr (Call("gtk_toolbar_set_style",
+	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_TEXT")])))]
+		| (String("Toolbar"), "Style", [Ast.Id("both")]) ->
+	[(Cast.Expr (Call("gtk_toolbar_set_style",
+	[Call("GTK_TOOLBAR",[Cast.Id id]); ConstLit ("GTK_TOOLBAR_BOTH")])))]
+		| (String("Toolbar"), "Insert", [Ast.Id wid]) ->
+	[(Cast.Expr (Call("gtk_toolbar_insert",
+	[Call("GTK_TOOLBAR",[Cast.Id id]); Call("GTK_TOOL_ITEM",[Cast.Id wid]); Literal (-1)])))]
+		| (String("Statusbar"), "Show", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_statusbar_push",
+	[Call("GTK_STATUSBAR",[Cast.Id id]); Call("gtk_statusbar_get_context_id",[Call("GTK_STATUSBAR",[Cast.Id id]); StrLit ""]); StrLit s])))]
+		| (String("Button"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
+		| (String("ButtonArray"), "Label", [Ast.Literal i; Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Call("GTK_BUTTON",[Cast.OneDArrSubs(Id id, Literal i)]); StrLit s])))]
+		| (String("Label"), "Text", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_label_set_text ",
+	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]
+		| (String("Frame"), "Shadow", [Ast.Id s]) ->
+		(match s with
+		  	"in" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
+		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_IN")]))]
+			| "out" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
+		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_OUT")]))]
+			| "etchedin" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
+		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_ETCHED_IN")]))]
+			| "etchedout" -> [Cast.Expr (Call("gtk_frame_set_shadow_type",
+		[Call("GTK_FRAME",[Id id]); ConstLit ("GTK_SHADOW_ETCHED_OUT")]))]
+			| _ -> raise (Failure ("Error: Shadow " ^ s ^ " is invalid.")))		
+		| (String("Grid"), "InsertRowAt", [Ast.Literal r]) ->
+	[Cast.Expr (Call("gtk_grid_insert_row",
+	[Call("GTK_GRID",[Id id]); Literal r]))]
+		| (String("Grid"), "InsertColumnAt", [Ast.Literal c]) ->
+	[Cast.Expr (Call("gtk_grid_insert_column",
+	[Call("GTK_GRID",[Id id]); Literal c]))]
+		| (String("Grid"), "Hom", [Ast.Id "row"]) ->
+	[Cast.Expr (Call("gtk_grid_set_row_homogeneous",
+	[Call("GTK_GRID",[Id id]); ConstLit("TRUE")]))]
+		| (String("Grid"), "Hom", [Ast.Id "column"]) ->
+	[Cast.Expr (Call("gtk_grid_set_column_homogeneous",
+	[Call("GTK_GRID",[Id id]); ConstLit("TRUE")]))]
+		| (String("Grid"), "AttachAt", [Ast.Id wid; Ast.Literal x; Ast.Literal y; Ast.Literal c; Ast.Literal r]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_grid_attach",
+	[Call("GTK_GRID",[Id id]); Id wid; Literal x; Literal y; Literal c; Literal r]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (String("ButtonArray"), "AttachTo", [Ast.Literal i; Ast.Id wid; Ast.Literal x; Ast.Literal y; Ast.Literal c; Ast.Literal r]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_grid_attach",
+	[Call("GTK_GRID",[Id wid]); OneDArrSubs(Id id, Literal i); Literal x; Literal y; Literal c; Literal r]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "Contain", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_container_add",
+	[Call("GTK_CONTAINER",[Id id]); Id wid]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "FixPos", [Ast.Id wid; Ast.Literal x; Ast.Literal y]) ->
+		if (NameMap.find wid plocals = String("Fixed")) 
+		or (NameMap.find wid pglobals = String("Fixed")) then
+		[Cast.Expr (Call("gtk_fixed_put",
+	[Call("GTK_FIXED",[Id wid]); Id id; Literal x; Literal y]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a Fixed widget."))
+		| (_, "BoxPack", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_box_pack_start",
+	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("FALSE"); ConstLit("FALSE"); Literal 5]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "BoxPackFill", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_box_pack_start",
+	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("FALSE"); ConstLit("TRUE"); Literal 5]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "BoxPackExpand", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_box_pack_start",
+	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("TRUE"); ConstLit("FALSE"); Literal 5]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "BoxPackFillExpand", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_box_pack_start",
+	[Call("GTK_BOX",[Id id]); Id wid; ConstLit("TRUE"); ConstLit("TRUE"); Literal 5]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "ClickQuit", _) ->
+	[Cast.Expr (Call("g_signal_connect",
+	[Call("G_OBJECT",[Id id]); StrLit "activate"; Call("G_CALLBACK",[ConstLit("gtk_main_quit")]); Null]))]
+		| (_, "BorderWidth", [Ast.Literal w]) ->
+	[Cast.Expr (Call("gtk_container_set_border_width",
+	[Call("GTK_CONTAINER",[Id id]); Literal w]))]
+		| (String("Menuitem"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_menu_item_set_label",
+	[Call("GTK_MENU_ITEM",[Id id]); StrLit s])))]
+		| (_, "InMenu", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_menu_item_set_submenu",
+	[Call("GTK_MENU_ITEM",[Id id]); Id wid]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "AppendToMenu", [Ast.Id wid]) ->
+		if (NameMap.mem wid plocals) or (NameMap.mem wid pglobals) then 
+	[Cast.Expr (Call("gtk_menu_shell_append",
+	[Call("GTK_MENU_SHELL",[Id wid]); Id id]))]
+		else raise (Failure ("Error: " ^ wid ^ " is not a valid widget."))
+		| (_, "Show", _) ->
+	[Cast.Expr (Call("gtk_widget_show",[Id id]))]
+		| (_, "Showall", _) ->
+	[Cast.Expr (Call("gtk_widget_show_all",[Id id]))]
+		| (String("CheckBox"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]		
+		| (String("RadioButton"), "Label", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_button_set_label",
+	[Call("GTK_BUTTON",[Cast.Id id]); StrLit s])))]
+		| (String("TextEntry"), "Text", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_entry_set_text ",
+	[Call("GTK_LABEL",[Cast.Id id]); StrLit s])))]	
+		| (String("ComboBox"), "Append", [Ast.StrLit s]) ->
+	[(Cast.Expr (Call("gtk_combo_box_append_text ",
+	[Call("GTK_COMBO",[Cast.Id id]); StrLit s])))]	
+		| (String ("CheckBox"), "Active", [Ast.Id("yes")]) ->		
+	[Cast.Expr (Call("gtk_toggle_button_set_active",
+	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("TRUE")]))]
+		| (String ("CheckBox"), "Active", [Ast.Id("no")]) ->		
+	[Cast.Expr (Call("gtk_toggle_button_set_active",
+	[Call("GTK_TOGGLE_BUTTON",[Id id]); ConstLit("FALSE")]))]	
+
+
+		| (_, _, _) -> raise (Failure ("Error: Variable " ^ id ^ "or object " ^ obj ^" is invalid or cannot be changed."))
+		 
+
+		in
+                 match lfdecl.body with
+                   []  ->     print
+                 | [x] ->  x::print
+                 | x   -> x @ print
+           )} in
+         let ncenv = 
+           ( match f with
+               []  ->     []
+             | [x] -> [nfdecl]
+             | x   -> List.rev([nfdecl]@(List.tl (List.rev x))))
+	in (env, (st, g, ncenv), loc_obj_decls)))
 
 
     in

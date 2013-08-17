@@ -328,13 +328,16 @@ let run (vars, objs) =
              | [x] -> [nfdecl]
              | x   -> x @ [nfdecl]) in 
 
-          (* Interpret *)
-          (match v with
-             Int(x) -> print_endline (string_of_int x)
+          (* Interpret if switched on *)
+          if (Array.length Sys.argv > 1) then 
+            if(Sys.argv.(1) = "-i") then  
+              (match v with
+                 Int(x) -> print_endline (string_of_int x)
 		   | Float(x) -> print_endline (string_of_float x)
-           | String(x) -> print_endline x
-           | Pointer(x) -> print_endline x
-           | Char(x) -> print_endline (String.make 1 x));
+                   | String(x) -> print_endline x
+                   | Pointer(x) -> print_endline x
+                   | Char(x) -> print_endline (String.make 1 x));
+          
 
            (* Return the new environment *)
 	   ((Int 0), (cstrs, cvars, ncenv), loc_obj_decls), env

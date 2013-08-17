@@ -65,7 +65,7 @@ Check() {
     generatedfiles=""
     if [ $testc -eq 0 ] ; then
         generatedfiles="$generatedfiles ${basename}.i.out" &&
-        Run "$PEARC" "<" $1 ">" ${basename}.i.out &&
+        Run "$PEARC -i" "<" $1 ">" ${basename}.i.out &&
         Compare ${basename}.i.out ${reffile}.out ${basename}.i.diff
     else
         generatedfiles="$generatedfiles ${basename}.i.out" &&
@@ -109,7 +109,7 @@ then
 else
     if [ $testc -eq 0 ] ; then 
         # Basic tests
-        files="tests/fail-*.pear tests/test-*.pear"
+        files="testsi/fail-*.pear testsi/test-*.pear"
     else
         # Test Gtk
         files="testsgtk/fail-*.pear testsgtk/test-*.pear"

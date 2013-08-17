@@ -9,6 +9,6 @@ button.Size(80, 35),
 button.FixPos(frame, 50, 80),
 label.Label(),
 label.FixPos(frame, 70, 50),
-button.ClickDisplay(helloworld(label, "hello world!")),
+button.Clicked(label, label.Text("hello world!")),
 window.Showall(),
 )

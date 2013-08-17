@@ -5,9 +5,9 @@
 #include <glib/gstdio.h>
 
 
-void helloworld(GtkWidget* widget, gpointer label)
+void buttonClicked(GtkWidget* widget, gpointer label)
 {
-	gtk_label_set_text (GTK_LABEL(label), "hello world!");
+	gtk_label_set_text(GTK_LABEL(label), "hello world!");
 }
 
 
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	gtk_fixed_put(GTK_FIXED(frame), button, 50, 80);
 	label = gtk_label_new (NULL);
 	gtk_fixed_put(GTK_FIXED(frame), label, 70, 50);
-	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(helloworld), label);
+	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(buttonClicked), label);
 	gtk_widget_show_all(window);
 	gtk_main();
 	return 0;

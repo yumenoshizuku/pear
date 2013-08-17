@@ -14,6 +14,7 @@ type expr =
   | AssignObj of string * string * expr list
   | ChildAssign of string * string * expr  (* Assign child object's value *)
   | Call of string * expr list
+  | Set of string * string * expr list
   | Noexpr
 
 (* Statement that executes the program and appends the main method *)
@@ -24,7 +25,6 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  | Set of string * string * expr list
   | Declare of string * string
 
 

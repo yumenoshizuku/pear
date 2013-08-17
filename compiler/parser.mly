@@ -65,7 +65,6 @@ stmt:
   | FOR LPAREN expr_opt COMMA expr_opt COMMA expr_opt RPAREN stmt
      { For($3, $5, $7, $9) }
   | WHILE LPAREN expr RPAREN stmt { While($3, $5) }
-  | ID DOT OBJECT LPAREN actuals_opt RPAREN COMMA { Set($1, $3, $5) }
 
 
 expr_opt:
@@ -92,6 +91,7 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3) }
   | ID DOT ID ASSIGN expr { ChildAssign($1, $3, $5) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
+  | ID DOT OBJECT LPAREN actuals_opt RPAREN { Set($1, $3, $5) }
   | ID ASSIGN OBJECT LPAREN actuals_opt RPAREN { AssignObj($1,$3,$5) }
   | LPAREN expr RPAREN { $2 }
 

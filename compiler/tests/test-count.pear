@@ -1,6 +1,6 @@
 Main()(
 window.Window(),
-window.Position(center),
+window.Position("center"),
 window.Size(250, 180),
 window.Title("+-"),
 frame.Fixed(),

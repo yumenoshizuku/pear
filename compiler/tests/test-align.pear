@@ -1,6 +1,6 @@
 Main()(
 window.Window(),
-window.Position(center),
+window.Position("center"),
 window.Size(350, 200),
 window.Title("Alignment"),
 window.BorderWidth(10),
